@@ -1,9 +1,0 @@
-from sys import argv
-
-def main():
-    print("Hello, world!")
-    for item in argv:
-        print(argv)
-
-if __name__ == '__main__':
-    main()

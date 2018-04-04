@@ -1,0 +1,8 @@
+{
+    "file_name": "../../datasets/forestfires.csv",    
+    "target_col": [12],
+    "delimiter": ",",
+    "has_header": true,
+    "csv_name": "../../datasets/data.csv",
+    "vw_name": "../../datasets/data.vw"
+}
