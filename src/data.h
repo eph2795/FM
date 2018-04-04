@@ -6,36 +6,39 @@
 #include <set>
 
 
-struct E {
+struct Feature {
     double value;
     size_t idx;
 };
 
 
-struct Row {
-    std::vector<E> elements;
+struct Object {
+    std::vector<Feature> _features;
 };
 
 
-struct Matrix {
-    std::vector<Row> rows;
+struct X {
+    std::vector<Object> _objects;
 };
 
 
-struct Target {
-    std::vector<double> y;
+struct Y {
+    std::vector<double> _targets;
 };
 
 
 struct DataReader {
-    std::vector<char> dtypes;
-    std::vector<std::set<std::string>> unique_values;
-    std::vector<size_t> positions;
-};
+    DataReader(const std::string& filename, bool has_header, size_t target_col);
+    void get_columns_info();
+    void fill_with_data(X* x, Y* y);
 
+    std::string _filename;
+    bool _has_header;
+    size_t _target_col;
 
-struct Model {
-    std::vector<double> w;
+    std::vector<char> _dtypes;
+    std::vector<std::set<std::string>> _unique_values;
+    std::vector<size_t> _positions;
 };
 
 
@@ -44,10 +47,5 @@ std::string get_token(size_t* pos, const std::string& line);
 
 char get_token_dtype(char cur_dtype, const std::string& token, size_t col_number);
 
-
-void get_columns_info(const std::string& filename, bool has_header, size_t target_col, std::vector<char>* dtypes, std::vector<std::set<std::string>>* unique_values);
-
-
-void fill_data(const std::string& filename, bool has_header, size_t target_col, const DataReader& data_reader, Matrix* mat, Target* y);
 
 #endif 
