@@ -1,8 +1,9 @@
 {
-    "file_name": "../../datasets/forestfires.csv",    
-    "target_col": [12],
+    "file_name": "../../datasets/forestfires.csv",  
+    "csv_name": "../../datasets/data.csv",
+    "vw_name": "../../datasets/data.vw",  
     "delimiter": ",",
     "has_header": true,
-    "csv_name": "../../datasets/data.csv",
-    "vw_name": "../../datasets/data.vw"
+    "target_col": [12],
+    "categorical_features": [2, 3, "X", "Y"]    
 }

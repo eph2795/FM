@@ -30,22 +30,24 @@ def main(config):
             else:
                 new_l.append(item)
         return new_l
-
+    
     to_throw = process_columns(config['throw_features'])
     target_col = process_columns(config['target_col'])
     f_col = process_columns(config['float_features'])
     cat_col = process_columns(config['categorical_features'])
-
     Y = df[target_col]
-
-    cols = [i for i in range(df.shape[1])]
+    cols = list(df.columns.values)
     cols = list(set(cols).difference(set(to_throw + target_col)))
-    
-    df = df.iloc[:, cols]
+    df = df.loc[:, cols]
     df.to_csv(config['csv_name'], index=False)
+   
+    if not f_col and cat_col:
+        f_col = list(set(cols).difference(cat_col))
+    if not cat_col and f_col:
+        cat_col = list(set(cols).differece(f_col))
     
     X_cat = df[cat_col] if cat_col else df.select_dtypes(exclude='floating')
-    X_f = df[f_col] if f_col else df.select_dtypes(include='floating'))
+    X_f = df[f_col] if f_col else df.select_dtypes(include='floating')
     
     X_cat = np.array(X_cat, dtype=np.str)
     X_f = np.array(X_f)
