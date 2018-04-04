@@ -23,7 +23,6 @@ std::string get_token(size_t* pos, const std::string& line) {
 }
 
 
-
 char get_token_dtype(char cur_dtype, const std::string& token, size_t col_number) {
     size_t pos = 0;
     if (cur_dtype == 'I') {

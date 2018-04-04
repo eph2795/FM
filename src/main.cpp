@@ -18,9 +18,9 @@ void print_vector(const std::vector<T>& v) {
 
 
 int main() {
-    std::string filename("../../datasets/machine.csv");
+    std::string filename("../../datasets/u.data.csv");
     bool has_header = true;
-    size_t target_col = 8;
+    size_t target_col = 2;
     
     DataReader data_reader(filename, has_header, target_col);
     std::cout << "Start to preprocessing columns.." << std::endl;
@@ -46,7 +46,7 @@ int main() {
     
     size_t batch_size = 16;
     double learning_rate = 1e-1;
-    size_t num_epochs = 100;
+    size_t num_epochs = 10;
     Optimizer optimizer(num_epochs, learning_rate, batch_size);
 
     optimizer.train(&model, x, y);

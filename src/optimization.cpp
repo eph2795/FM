@@ -61,7 +61,7 @@ void Optimizer::train(Model* model, const X& x, const Y& y) {
         std::random_shuffle(objects_order.begin(), objects_order.end());
 
         size_t batch_N = N / _batch_size + (N % _batch_size != 0);
-        std::cout << "Data size: " << N << ", number of batches: " << batch_N << std::endl;
+        // std::cout << "Data size: " << N << ", number of batches: " << batch_N << std::endl;
         for (size_t batch_i = 0; batch_i < batch_N; batch_i++) {
             std::vector<size_t> obj_idxes(objects_order.begin() + batch_i * _batch_size, 
                                           objects_order.begin() + std::min((batch_i + 1) * _batch_size, N));
@@ -69,20 +69,20 @@ void Optimizer::train(Model* model, const X& x, const Y& y) {
             std::vector<double> update(model->_w.size(), 0);
             for (size_t obj_idx: obj_idxes) {
                 double coef = -_learning_rate * MSE_grad(*model, x, y, obj_idx);
-                std::cout << "Coef for batch " << obj_idx << ": " << coef << std::endl;
+                // std::cout << "Coef for batch " << obj_idx << ": " << coef << std::endl;
                 std::vector<double> grad = model_grad(*model, x, obj_idx);
                 for (size_t k = 0; k < grad.size(); k++) {
                     update[k] += coef * grad[k];
                 } 
             }
 
-            print_vector(update);
+            // print_vector(update);
             for (size_t k = 0; k < update.size(); k++) {
                 model->_w[k] += update[k] / _batch_size;
             }
-            print_vector(model->_w);
+            // print_vector(model->_w);
         }
-        print_vector(model->_w);
+        // print_vector(model->_w);
     }
 }
 
