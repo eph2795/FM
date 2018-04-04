@@ -66,9 +66,9 @@ def main(config):
             shift = X_f.shape[1]
             for j in range(X_cat.shape[1]):
                 l.append(str(j + shift))
-                l.append(':')
+                l.append('_')
                 l.append(X_cat[i, j])
-                l.append(' ')
+                l.append(':1 ')
             l.append('\n')
             f.write(''.join(l))
     

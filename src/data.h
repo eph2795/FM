@@ -28,17 +28,15 @@ struct Y {
 
 
 struct DataReader {
-    DataReader(const std::string& filename, bool has_header, size_t target_col);
+    DataReader(const std::string& filename);
     void get_columns_info();
     void fill_with_data(X* x, Y* y);
 
     std::string _filename;
-    bool _has_header;
-    size_t _target_col;
-
-    std::vector<char> _dtypes;
-    std::vector<std::set<std::string>> _unique_values;
-    std::vector<size_t> _positions;
+    size_t _lines_number;
+    size_t _features_number;
+    std::vector<std::string> _unique_features;
+    std::vector<size_t> _features_position;
 };
 
 
