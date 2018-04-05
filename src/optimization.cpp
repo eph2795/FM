@@ -54,31 +54,32 @@ Optimizer::Optimizer(size_t num_epochs, double learning_rate, size_t batch_size)
 
 void Optimizer::train(Model* model, const X& x, const Y& y) {
     size_t N = x._objects.size();
+    size_t f = model->_w.size();
+
     std::vector<size_t> objects_order(N);
     std::iota(objects_order.begin(), objects_order.end(), 0);
 
+    std::vector<double> update(model->_w.size(), 0);
+    std::vector<double> m_grad(model->_w.size(), 0);
     for (size_t epoch = 0; epoch < _num_epochs; epoch++) {
         std::random_shuffle(objects_order.begin(), objects_order.end());
 
-        size_t batch_N = N / _batch_size + (N % _batch_size != 0);
+        // size_t batch_N = N / _batch_size + (N % _batch_size != 0);
         // std::cout << "Data size: " << N << ", number of batches: " << batch_N << std::endl;
-        for (size_t batch_i = 0; batch_i < batch_N; batch_i++) {
-            std::vector<size_t> obj_idxes(objects_order.begin() + batch_i * _batch_size, 
-                                          objects_order.begin() + std::min((batch_i + 1) * _batch_size, N));
-            
-            std::vector<double> update(model->_w.size(), 0);
-            for (size_t obj_idx: obj_idxes) {
-                double coef = -_learning_rate * MSE_grad(*model, x, y, obj_idx);
-                // std::cout << "Coef for batch " << obj_idx << ": " << coef << std::endl;
-                std::vector<double> grad = model_grad(*model, x, obj_idx);
-                for (size_t k = 0; k < grad.size(); k++) {
-                    update[k] += coef * grad[k];
-                } 
-            }
+        for (size_t obj_idx = 0; obj_idx < N; obj_idx++) {
+            double coef = -_learning_rate * MSE_grad(*model, x, y, obj_idx);
+            m_grad = model_grad(*model, x, obj_idx);
+            for (size_t k = 0; k < f; k++) {
+                update[k] += coef * m_grad[k];
+            } 
 
             // print_vector(update);
-            for (size_t k = 0; k < update.size(); k++) {
-                model->_w[k] += update[k] / _batch_size;
+            // break;
+            if (((obj_idx + 1) % _batch_size == 0) || (obj_idx == N - 1)) {
+                for (size_t k = 0; k < f; k++) {
+                    model->_w[k] += update[k] / _batch_size;
+                    update[k] = 0;
+                }
             }
             // print_vector(model->_w);
         }
@@ -99,7 +100,7 @@ Y Model::predict(const Model& model, const X& x) {
 double MSE(const Y& one, const Y& another) {
     double result = 0;
     for (size_t i = 0; i < one._targets.size(); i++) {
-        std::cout << "Prediction: " << one._targets[i] << ", Target: " << another._targets[i] << std::endl; 
+        // std::cout << "Prediction: " << one._targets[i] << ", Target: " << another._targets[i] << std::endl; 
         result += std::pow(one._targets[i] - another._targets[i], 2);
     }
     result /= one._targets.size();

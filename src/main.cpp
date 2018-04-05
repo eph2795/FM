@@ -18,11 +18,8 @@ void print_vector(const std::vector<T>& v) {
 
 
 int main() {
-    std::string filename("../../datasets/u.data.csv");
-    bool has_header = true;
-    size_t target_col = 2;
-    
-    DataReader data_reader(filename, has_header, target_col);
+    std::string filename("../../datasets/u.data.vw");    
+    DataReader data_reader(filename);
     std::cout << "Start to preprocessing columns.." << std::endl;
     data_reader.get_columns_info();
     std::cout << "Columns preprocessed!" << std::endl;
@@ -33,15 +30,15 @@ int main() {
     data_reader.fill_with_data(&x, &y);
     std::cout << "Filling finished!" << std::endl;
 
-    // for (size_t i = 0; i < mat.rows.size(); i++) {
-    //     for (size_t j = 0; j < mat.rows[i].elements.size(); j++) {
-    //         std::cout << "Idx: " << mat.rows[i].elements[j].idx << ", value: " << mat.rows[i].elements[j].value << "\t";
+    // for (size_t i = 0; i < x._objects.size(); i++) {
+    //     for (size_t j = 0; j < x._objects[i]._features.size(); j++) {
+    //         std::cout << "Idx: " << x._objects[i]._features[j].idx << ", value: " << x._objects[i]._features[j].value << "\t";
     //     }
-    //     std::cout << std::endl;
+    //     std::cout << "\t target: "  << y._targets[i] << std::endl;
     // }
 
     Model model;
-    model._w.resize(data_reader._positions[data_reader._positions.size() - 1]);
+    model._w.resize(data_reader._features_number);
     
     
     size_t batch_size = 16;
@@ -51,7 +48,7 @@ int main() {
 
     optimizer.train(&model, x, y);
 
-    print_vector(model._w);
+    // print_vector(model._w);
 
     Y prediction = model.predict(model, x);
     std::cout << "MSE: " << MSE(prediction, y) << std::endl;

@@ -3,7 +3,7 @@
 
 #include <string>
 #include <vector>
-#include <set>
+#include <map>
 
 
 struct Feature {
@@ -33,17 +33,16 @@ struct DataReader {
     void fill_with_data(X* x, Y* y);
 
     std::string _filename;
-    size_t _lines_number;
     size_t _features_number;
-    std::vector<std::string> _unique_features;
-    std::vector<size_t> _features_position;
+    size_t _objects_number;
+    std::map<std::string, size_t> _features_position;
 };
 
 
-std::string get_token(size_t* pos, const std::string& line);
+std::string get_token(size_t* pos, const std::string& line, char sep);
 
 
-char get_token_dtype(char cur_dtype, const std::string& token, size_t col_number);
+// char get_token_dtype(char cur_dtype, const std::string& token, size_t col_number);
 
 
 #endif 
