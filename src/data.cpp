@@ -1,21 +1,20 @@
 #include <iostream>
 #include <fstream>
-
 #include <cassert>
 
 #include <vector>
 #include <utility>
 #include <map>
 
+#include <boost/spirit/include/qi.hpp>
+
 #include "data.h"
 
 
 std::string get_token(size_t* pos, const std::string& line, char sep) {
-    size_t i;
-    for (i = *pos; i < line.size(); i++) {
-        if (line[i] == sep) {
-            break;
-        }
+    size_t i = line.find(sep, *pos);
+    if (i == std::string::npos) {
+        i = line.size();
     }
     std::string token = line.substr(*pos, i - *pos);
     *pos = i + 1;
@@ -81,7 +80,7 @@ void DataReader::get_columns_info(const std::string& file_name) {
     }
 
     _objects_number = line_num;
-    std::cout << _objects_number << " " << _features_number << std::endl;
+    std::cout << "Number of objects: " << _objects_number << ", Number of features: " << _features_number << std::endl;
     // for (std::pair<std::string, size_t> item: _features_position) {
     //     std::cout << "Feature: " << item.first << ", column number: " << item.second << "\t";
     // }

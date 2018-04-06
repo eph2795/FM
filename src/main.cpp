@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include <ctime>
+
 #include "data.h"
 #include "optimization.h"
 
@@ -39,31 +41,46 @@ int main(int argc, char** argv) {
     double learning_rate = 1e-3;
     size_t num_epochs = 10;
     parse_arguments(argc, argv, &train_file, &test_file, &num_epochs, &learning_rate);
+    clock_t start, finish;
 
     std::cout << "Passes number: " << num_epochs << std::endl;
     std::cout << "Learning rate: " << learning_rate << std::endl;
     std::cout << "Train data file: " << train_file << std::endl;
     std::cout << "Test data file: " << test_file << std::endl;
+    std::cout << std::endl;
 
+    std::cout << "Start to preprocessing train file.." << std::endl;
+    start = clock();
     DataReader data_reader;
-    std::cout << "Start to preprocessing file.." << std::endl;
     data_reader.get_columns_info(train_file);
-    std::cout << "File preprocessed!" << std::endl;
- 
-    std::cout << "Start to reading input data.." << std::endl;
+    finish = clock();
+    std::cout << "Train file preprocessed! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "Start to reading train data.." << std::endl;
+    start = clock();
     X x_train;
     Y y_train;  
     data_reader.fill_with_data(train_file, &x_train, &y_train);
-    std::cout << "Reading finished!" << std::endl;
+    finish = clock();
+    std::cout << "Reading finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
+    std::cout << std::endl;
 
+    std::cout << "Start to train model.." << std::endl;
+    start = clock();
     Model model;
     model._w.resize(data_reader._features_number);
-    
-    
     Optimizer optimizer(num_epochs, learning_rate);
-
     optimizer.train(&model, x_train, y_train);
+    Y train_prediction = model.predict(model, x_train);
+    double train_mse = MSE(train_prediction, y_train); 
+    finish = clock();
+    std::cout << "Training finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
+    std::cout << "MSE: " << train_mse << std::endl;
+    std::cout << std::endl;
 
+    std::cout << "Start to predict on test data.." << std::endl;
+    start = clock();
     X x_test;
     Y y_test;
     data_reader.fill_with_data(test_file, &x_test, &y_test);
@@ -74,8 +91,10 @@ int main(int argc, char** argv) {
     //     std::cout << "\t target: "  << y_test._targets[i] << std::endl;
     // }
     // print_vector(model._w);
-
-    Y prediction = model.predict(model, x_test);
-    std::cout << "MSE: " << MSE(prediction, y_test) << std::endl;
+    Y test_prediction = model.predict(model, x_test);
+    double test_mse = MSE(test_prediction, y_test);
+    finish = clock();
+    std::cout << "Prediction finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
+    std::cout << "MSE: " << test_mse << std::endl;
     return 0;
 }
