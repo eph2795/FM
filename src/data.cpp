@@ -50,13 +50,10 @@ std::string get_token(size_t* pos, const std::string& line, char sep) {
 // }
 
 
-DataReader::DataReader(const std::string& filename): _filename(filename) {}
-
-
-void DataReader::get_columns_info() {
+void DataReader::get_columns_info(const std::string& file_name) {
     _features_number = 0;
 
-    std::ifstream input(_filename.c_str());
+    std::ifstream input(file_name.c_str());
     std::string line, token;
     size_t line_num;
     for (line_num = 0; std::getline(input, line); line_num++) {
@@ -92,28 +89,28 @@ void DataReader::get_columns_info() {
 }
 
 
-void DataReader::fill_with_data(X* x, Y* y) {
-    x->_objects.resize(_objects_number);
-    y->_targets.resize(_objects_number);
+void DataReader::fill_with_data(const std::string& file_name, X* x, Y* y) const {
+    // x->_objects.resize(_objects_number);
+    // y->_targets.resize(_objects_number);
 
-    std::ifstream input(_filename.c_str());
+    std::ifstream input(file_name.c_str());
     std::string line, token;
     for (size_t line_num = 0; std::getline(input, line); line_num++) {
         size_t line_pos = 0;
         
         token = get_token(&line_pos, line, ' ');
-        y->_targets[line_num] = std::stod(token);
+        y->_targets.push_back(std::stod(token));
 
         token = get_token(&line_pos, line, ' ');
         Object object;
         for (size_t token_num = 0; line_pos < line.size(); token_num++) {
             Feature feauture;         
             token = get_token(&line_pos, line, ':');
-            feauture.idx = _features_position[token];
+            feauture.idx = _features_position.at(token);
             token = get_token(&line_pos, line, ' ');
             feauture.value = std::stod(token);
             object._features.push_back(feauture);
         }
-        x->_objects[line_num] = object;
+        x->_objects.push_back(object);
     }
 }

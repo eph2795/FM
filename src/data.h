@@ -28,11 +28,10 @@ struct Y {
 
 
 struct DataReader {
-    DataReader(const std::string& filename);
-    void get_columns_info();
-    void fill_with_data(X* x, Y* y);
+    DataReader() {};
+    void get_columns_info(const std::string& filename);
+    void fill_with_data(const std::string& filename, X* x, Y* y) const ;
 
-    std::string _filename;
     size_t _features_number;
     size_t _objects_number;
     std::map<std::string, size_t> _features_position;
