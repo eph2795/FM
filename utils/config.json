@@ -1,10 +1,10 @@
 {
-    "file_name": "../../datasets/ml-100k/u.data",  
-    "csv_name": "../../datasets/u.data.csv",
-    "vw_name": "../../datasets/u.data.vw",  
-    "delimiter": "\t",
-    "has_header": false,
-    "target_col": [2],
-    "throw_features": [3],
-    "categorical_features": [0, 1]    
+    "file_name": "../../datasets/forestfires.csv",  
+    "csv_name": "../../datasets/forestfires_edited.csv",
+    "vw_name": "../../datasets/forestfires.vw",  
+    "delimiter": ",",
+    "has_header": true,
+    "target_col": [12],
+    "throw_features": [],
+    "categorical_features": []    
 }

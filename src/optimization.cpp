@@ -18,6 +18,48 @@ void print_vector(const std::vector<T>& v) {
 }
 
 
+void print_object(const Object& object) {
+    for (Feature feature: object._features) {
+        std::cout << "Col: " << feature.idx << ", " << "Val: " << feature.value << "\t";
+    }
+    std::cout << std::endl;
+}
+
+
+Object update(const Object& one, const Object& another, double coef) {
+    Object result;
+    size_t one_size = one._features.size();
+    size_t another_size = another._features.size();
+    size_t one_idx = 0;
+    size_t another_idx = 0;
+    while ((one_idx < one_size) || (another_idx < another_size)) {
+        Feature feature;
+        if ((one_idx == one_size) || (one._features[one_idx].idx > another._features[another_idx].idx)) {
+            feature = another._features[another_idx];
+            feature.value *= coef;
+            another_idx += 1;
+        } else if ((another_idx == another_size) || (one._features[one_idx].idx < another._features[another_idx].idx)) {
+            feature = one._features[one_idx]; 
+            one_idx += 1;
+        } else {
+            feature.idx = one._features[one_idx].idx;
+            feature.value = one._features[one_idx].value + coef * another._features[another_idx].value;
+            one_idx += 1;
+            another_idx += 1;
+        }
+        result._features.push_back(feature);
+    }
+    return result;
+}
+
+
+void update(std::vector<double>* w, const Object& object, double coef) {
+    for (Feature feature: object._features) {
+        (*w)[feature.idx] += coef * feature.value;
+    }
+}
+
+
 double scalar_product(const Object& object, const std::vector<double>& w) {
     double result = 0;
     for (Feature feature: object._features) {
@@ -37,52 +79,55 @@ double MSE_grad(const Model& model, const X& x, const Y& y, size_t obj_idx) {
 }
 
 
-std::vector<double> model_grad(const Model& model, const X& x, size_t obj_idx) {
-    std::vector<double> result(model._w.size(), 0);
-    Object object = x._objects[obj_idx];
-    for (Feature feature: object._features) {
-        result[feature.idx] = feature.value;
-    }
+Object model_grad(const Model& model, const X& x, size_t obj_idx) {
+    Object result(x._objects[obj_idx]);
     return result;
 }
 
 
-Optimizer::Optimizer(size_t num_epochs, double learning_rate, size_t batch_size)
-        : _num_epochs(num_epochs), _learning_rate(learning_rate), _batch_size(batch_size)
+Optimizer::Optimizer(size_t num_epochs, double learning_rate)
+        : _num_epochs(num_epochs), _learning_rate(learning_rate)
 {}
 
 
 void Optimizer::train(Model* model, const X& x, const Y& y) {
     size_t N = x._objects.size();
-    size_t f = model->_w.size();
+    // size_t f = model->_w.size();
 
     std::vector<size_t> objects_order(N);
     std::iota(objects_order.begin(), objects_order.end(), 0);
 
-    std::vector<double> update(model->_w.size(), 0);
-    std::vector<double> m_grad(model->_w.size(), 0);
+    // Object w_update;
+    Object m_grad;
     for (size_t epoch = 0; epoch < _num_epochs; epoch++) {
         std::random_shuffle(objects_order.begin(), objects_order.end());
 
         // size_t batch_N = N / _batch_size + (N % _batch_size != 0);
         // std::cout << "Data size: " << N << ", number of batches: " << batch_N << std::endl;
-        for (size_t obj_idx = 0; obj_idx < N; obj_idx++) {
+        // size_t i = 0;
+        for (size_t obj_idx: objects_order) {
             double coef = -_learning_rate * MSE_grad(*model, x, y, obj_idx);
             m_grad = model_grad(*model, x, obj_idx);
-            for (size_t k = 0; k < f; k++) {
-                update[k] += coef * m_grad[k];
-            } 
-
-            // print_vector(update);
+            update(&(model->_w),  m_grad, coef);
+            // std::cout << "Obj idx: " << obj_idx << std::endl;
+            // print_object(m_grad);
+            // w_update = update(w_update, m_grad, coef);
+            // std::cout << "Obj coef: " << coef << std::endl;
+            
+            // print_object(w_update);
             // break;
-            if (((obj_idx + 1) % _batch_size == 0) || (obj_idx == N - 1)) {
-                for (size_t k = 0; k < f; k++) {
-                    model->_w[k] += update[k] / _batch_size;
-                    update[k] = 0;
-                }
-            }
-            // print_vector(model->_w);
+            // if (((i + 1) % _batch_size == 0) || (i == N - 1)) {
+            //     // print_object(w_update);
+            //     update(&(model->_w),  w_update, 1.0 / _batch_size);
+            //     w_update._features.resize(0);      
+            //     // print_vector(model->_w);
+            //     // std::cout << "\n\n\n\n\n";
+            //     // break;
+            // }
+            // // print_vector(model->_w);
+            // i += 1;
         }
+        // break;
         // print_vector(model->_w);
     }
 }

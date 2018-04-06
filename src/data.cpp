@@ -71,7 +71,7 @@ void DataReader::get_columns_info() {
             assert(false);
         }
         token = get_token(&line_pos, line, ' ');
-        assert(token.compare("|") == 0);
+        assert(token[0] == '|');
 
         for (size_t token_num = 0; line_pos < line.size(); token_num++) {
             token = get_token(&line_pos, line, ':');

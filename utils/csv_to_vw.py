@@ -37,10 +37,12 @@ def main(config):
     cat_col = process_columns(config['categorical_features'])
     Y = df[target_col]
     cols = list(df.columns.values)
-    cols = list(set(cols).difference(set(to_throw + target_col)))
+    cols = list(set(cols).difference(set(to_throw)))
     df = df.loc[:, cols]
     df.to_csv(config['csv_name'], index=False)
-   
+    cols = list(set(cols).difference(set(target_col)))
+    df = df.loc[:, cols]
+    
     if not f_col and cat_col:
         f_col = list(set(cols).difference(cat_col))
     if not cat_col and f_col:
