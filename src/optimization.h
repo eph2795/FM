@@ -21,13 +21,13 @@ struct Optimizer {
 };
 
 
-double scalar_product(const Object& object, const std::vector<double>& w);
+// double scalar_product(const Object& object, const std::vector<double>& w);
 
 
-double MSE_grad(const Model& model, const X& x, const Y& y, size_t obj_idx);
+// double MSE_grad(const Model& model, const X& x, const Y& y, size_t obj_idx);
 
 
-Object model_grad(const Model& model, const X& x, size_t obj_idx);
+// Object model_grad(const Model& model, const X& x, size_t obj_idx);
 
 
 double MSE(const Y& one, const Y& another);

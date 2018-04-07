@@ -18,69 +18,69 @@ void print_vector(const std::vector<T>& v) {
 }
 
 
-void print_object(const Object& object) {
-    for (Feature feature: object._features) {
-        std::cout << "Col: " << feature.idx << ", " << "Val: " << feature.value << "\t";
+void print_object(const SparseVector& object) {
+    for (std::pair<size_t, double> feature: object._items) {
+        std::cout << "Col: " << feature.first << ", " << "Val: " << feature.second << "\t";
     }
     std::cout << std::endl;
 }
 
 
-Object update(const Object& one, const Object& another, double coef) {
-    Object result;
-    size_t one_size = one._features.size();
-    size_t another_size = another._features.size();
-    size_t one_idx = 0;
-    size_t another_idx = 0;
-    while ((one_idx < one_size) || (another_idx < another_size)) {
-        Feature feature;
-        if ((one_idx == one_size) || (one._features[one_idx].idx > another._features[another_idx].idx)) {
-            feature = another._features[another_idx];
-            feature.value *= coef;
-            another_idx += 1;
-        } else if ((another_idx == another_size) || (one._features[one_idx].idx < another._features[another_idx].idx)) {
-            feature = one._features[one_idx]; 
-            one_idx += 1;
-        } else {
-            feature.idx = one._features[one_idx].idx;
-            feature.value = one._features[one_idx].value + coef * another._features[another_idx].value;
-            one_idx += 1;
-            another_idx += 1;
-        }
-        result._features.push_back(feature);
+// Object update(const Object& one, const Object& another, double coef) {
+//     Object result;
+//     size_t one_size = one._features.size();
+//     size_t another_size = another._features.size();
+//     size_t one_idx = 0;
+//     size_t another_idx = 0;
+//     while ((one_idx < one_size) || (another_idx < another_size)) {
+//         Feature feature;
+//         if ((one_idx == one_size) || (one._features[one_idx].idx > another._features[another_idx].idx)) {
+//             feature = another._features[another_idx];
+//             feature.value *= coef;
+//             another_idx += 1;
+//         } else if ((another_idx == another_size) || (one._features[one_idx].idx < another._features[another_idx].idx)) {
+//             feature = one._features[one_idx]; 
+//             one_idx += 1;
+//         } else {
+//             feature.idx = one._features[one_idx].idx;
+//             feature.value = one._features[one_idx].value + coef * another._features[another_idx].value;
+//             one_idx += 1;
+//             another_idx += 1;
+//         }
+//         result._features.push_back(feature);
+//     }
+//     return result;
+// }
+
+
+void update(std::vector<double>* w, const SparseVector& object, double coef) {
+    for (std::pair<size_t, double> feature: object._items) {
+        (*w)[feature.first] += coef * feature.second;
     }
-    return result;
 }
 
 
-void update(std::vector<double>* w, const Object& object, double coef) {
-    for (Feature feature: object._features) {
-        (*w)[feature.idx] += coef * feature.value;
-    }
-}
-
-
-double scalar_product(const Object& object, const std::vector<double>& w) {
+double scalar_product(const SparseVector& object, const std::vector<double>& w) {
     double result = 0;
-    for (Feature feature: object._features) {
-        result += w[feature.idx] * feature.value;
+    for (std::pair<size_t, double> feature: object._items) {
+        result += w[feature.first] * feature.second;
     }
     return result;
 }
 
 double MSE_grad(const Model& model, const X& x, const Y& y, size_t obj_idx) {
     double result = 0;
-    Object object = x._objects[obj_idx];
-    for (Feature feature: object._features) {
-        result += feature.value * model._w[feature.idx];
+    SparseVector object = x._objects[obj_idx];
+    for (std::pair<size_t, double> feature: object._items) {
+        result += feature.second * model._w[feature.first];
     }
     result = 2 * (result - y._targets[obj_idx]);
     return result;
 }
 
 
-Object model_grad(const Model& model, const X& x, size_t obj_idx) {
-    Object result(x._objects[obj_idx]);
+SparseVector model_grad(const Model& model, const X& x, size_t obj_idx) {
+    SparseVector result(x._objects[obj_idx]);
     return result;
 }
 
@@ -98,7 +98,6 @@ void Optimizer::train(Model* model, const X& x, const Y& y) {
     std::iota(objects_order.begin(), objects_order.end(), 0);
 
     // Object w_update;
-    Object m_grad;
     for (size_t epoch = 0; epoch < _num_epochs; epoch++) {
         std::random_shuffle(objects_order.begin(), objects_order.end());
 
@@ -107,7 +106,7 @@ void Optimizer::train(Model* model, const X& x, const Y& y) {
         // size_t i = 0;
         for (size_t obj_idx: objects_order) {
             double coef = -_learning_rate * MSE_grad(*model, x, y, obj_idx);
-            m_grad = model_grad(*model, x, obj_idx);
+            SparseVector m_grad = model_grad(*model, x, obj_idx);
             update(&(model->_w),  m_grad, coef);
             // std::cout << "Obj idx: " << obj_idx << std::endl;
             // print_object(m_grad);
@@ -135,7 +134,7 @@ void Optimizer::train(Model* model, const X& x, const Y& y) {
 
 Y Model::predict(const Model& model, const X& x) {
     Y y;
-    for (const Object& object: x._objects) {
+    for (const SparseVector& object: x._objects) {
         y._targets.push_back(scalar_product(object, model._w));
     }
     return y;

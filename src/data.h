@@ -6,19 +6,13 @@
 #include <map>
 
 
-struct Feature {
-    double value;
-    size_t idx;
-};
-
-
-struct Object {
-    std::vector<Feature> _features;
+struct SparseVector {
+    std::map<size_t, double> _items;
 };
 
 
 struct X {
-    std::vector<Object> _objects;
+    std::vector<SparseVector> _objects;
 };
 
 

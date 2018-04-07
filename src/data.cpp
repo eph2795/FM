@@ -22,31 +22,13 @@ std::string get_token(size_t* pos, const std::string& line, char sep) {
 }
 
 
-// char get_token_dtype(char cur_dtype, const std::string& token, size_t col_number) {
-//     if (cur_dtype == 'I') {
-//         try {
-//             std::stoi(token, &pos);
-//             if ((cur_dtype == 'I') && (pos == token.size())) {
-//                 return 'I';
-//             }
-//         } 
-//         catch (std::invalid_argument e) {
-//             std::cout << "This column is not Int: " << col_number << ", example: " << token << "!" << std::endl;
-//         } 
-//     }      
-//     if (cur_dtype != 'C') {
-//         try {
-//             std::stod(token, &pos);
-//             if ((cur_dtype != 'C') && (pos == token.size())) {
-//                 return 'F';
-//             } 
-//         }
-//         catch (std::invalid_argument e) {
-//             std::cout << "This column is not Float: " << col_number << ", example: " << token << "!" << std::endl;
-//         }
-//     }
-//     return 'C';
-// }
+double parse_double(const std::string& token) {
+    const char* ptr = token.c_str();
+    size_t size = token.size();
+    double result;
+    boost::spirit::qi::parse(ptr, ptr + size, boost::spirit::qi::double_, result);
+    return result;
+}
 
 
 void DataReader::get_columns_info(const std::string& file_name) {
@@ -60,7 +42,8 @@ void DataReader::get_columns_info(const std::string& file_name) {
 
         token = get_token(&line_pos, line, ' ');
         try {
-            std::stod(token);
+            parse_double(token);
+            // std::stod(token);
         }
         catch (std::invalid_argument) {
             std::cout << "Label has wrong type!" << std::endl;
@@ -98,17 +81,18 @@ void DataReader::fill_with_data(const std::string& file_name, X* x, Y* y) const 
         size_t line_pos = 0;
         
         token = get_token(&line_pos, line, ' ');
-        y->_targets.push_back(std::stod(token));
+        y->_targets.push_back(parse_double(token));
+        // y->_targets.push_back(std::stod(token));
 
         token = get_token(&line_pos, line, ' ');
-        Object object;
-        for (size_t token_num = 0; line_pos < line.size(); token_num++) {
-            Feature feauture;         
+        SparseVector object;
+        for (size_t token_num = 0; line_pos < line.size(); token_num++) {        
             token = get_token(&line_pos, line, ':');
-            feauture.idx = _features_position.at(token);
+            size_t idx = _features_position.at(token);
             token = get_token(&line_pos, line, ' ');
-            feauture.value = std::stod(token);
-            object._features.push_back(feauture);
+            double value = parse_double(token);
+            // feauture.value = std::stod(token);
+            object._items[idx] = value;
         }
         x->_objects.push_back(object);
     }
