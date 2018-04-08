@@ -7,11 +7,13 @@
 #include <ctime>
 
 #include "data.h"
+#include "model.h"
+#include "loss.h"
 #include "optimization.h"
-
+        
 
 void parse_arguments(int argc, char** argv, 
-        std::string* train_file, std::string* test_file, size_t* num_epochs, double* learning_rate) {
+        std::string* train_file, std::string* test_file, bool* use_offset, size_t* num_epochs, double* learning_rate) {
     for (size_t i = 1; i < argc; i++) {
         try {
             if (strcmp(argv[i], "--data") == 0) {
@@ -20,7 +22,9 @@ void parse_arguments(int argc, char** argv,
             } else if (strcmp(argv[i], "--test") == 0) {
                 i += 1;
                 *test_file = std::string(argv[i]);
-            }else if (strcmp(argv[i], "--passes") == 0) {
+            } else if (strcmp(argv[i], "--use_offset") == 0) {
+                *use_offset = true;
+            } else if (strcmp(argv[i], "--passes") == 0) {
                 i += 1;
                 *num_epochs = std::stoul(argv[i]);
             } else if (strcmp(argv[i], "--learning_rate") == 0) {
@@ -35,12 +39,19 @@ void parse_arguments(int argc, char** argv,
 }
 
 
+Model* create_model(size_t features_number, bool use_offset) {
+    Model* model = new LinearModel(features_number, use_offset);
+    return model;
+}
+
+
 int main(int argc, char** argv) {
     std::string train_file("../../datasets/train_data.vw");  
     std::string test_file("../../datasets/test_data.vw");  
     double learning_rate = 1e-3;
     size_t num_epochs = 10;
-    parse_arguments(argc, argv, &train_file, &test_file, &num_epochs, &learning_rate);
+    bool use_offset = false;
+    parse_arguments(argc, argv, &train_file, &test_file, &use_offset, &num_epochs, &learning_rate);
     clock_t start, finish;
 
     std::cout << "Passes number: " << num_epochs << std::endl;
@@ -68,12 +79,12 @@ int main(int argc, char** argv) {
 
     std::cout << "Start to train model.." << std::endl;
     start = clock();
-    Model model;
-    model._w.resize(data_reader._features_number);
+    Model* model = create_model(data_reader._features_number, use_offset);
+    MSE loss;
     Optimizer optimizer(num_epochs, learning_rate);
-    optimizer.train(&model, x_train, y_train);
-    Y train_prediction = model.predict(model, x_train);
-    double train_mse = MSE(train_prediction, y_train); 
+    optimizer.train(model, &loss, x_train, y_train);
+    Y train_prediction = model->predict(x_train);
+    double train_mse = loss.compute_loss(train_prediction, y_train); 
     finish = clock();
     std::cout << "Training finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
     std::cout << "MSE: " << train_mse << std::endl;
@@ -91,10 +102,12 @@ int main(int argc, char** argv) {
     //     std::cout << "\t target: "  << y_test._targets[i] << std::endl;
     // }
     // print_vector(model._w);
-    Y test_prediction = model.predict(model, x_test);
-    double test_mse = MSE(test_prediction, y_test);
+    Y test_prediction = model->predict(x_test);
+    double test_mse = loss.compute_loss(test_prediction, y_test);
     finish = clock();
     std::cout << "Prediction finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
     std::cout << "MSE: " << test_mse << std::endl;
+
+    delete model;
     return 0;
 }
