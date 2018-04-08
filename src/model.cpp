@@ -27,7 +27,7 @@ SparseWeights::~SparseWeights() {};
 LinearWeights::LinearWeights(size_t features_number): _w(features_number) {}
 
 
-void LinearWeights::update_weights(const LinearSparseWeights& update, double coef) {
+inline void LinearWeights::update_weights(const LinearSparseWeights& update, double coef) {
     _w0 += coef * update._w0;
     for (std::pair<size_t, double> item: update._w._items) {
         _w[item.first] += coef * item.second;
@@ -40,7 +40,7 @@ LinearModel::LinearModel(size_t features_number, bool use_offset)
 {}
 
 
-double LinearModel::predict(const SparseVector& object) {
+inline double LinearModel::predict(const SparseVector& object) {
     double prediction = 0;
     for (std::pair<size_t, double> feature: object._items) {
         prediction += _weights._w[feature.first] * feature.second;
@@ -62,7 +62,7 @@ Y LinearModel::predict(const X& x) {
 }
 
 
-SparseWeights* LinearModel::compute_grad(const SparseVector& object) {
+inline SparseWeights* LinearModel::compute_grad(const SparseVector& object) {
     LinearSparseWeights* m_grad = new LinearSparseWeights;
     m_grad->_w0 = 1;
     m_grad->_w = object;
@@ -70,7 +70,7 @@ SparseWeights* LinearModel::compute_grad(const SparseVector& object) {
 }
 
 
-void LinearModel::update_weights(const SparseWeights* update, double coef) {
+inline void LinearModel::update_weights(const SparseWeights* update, double coef) {
     const LinearSparseWeights* linear_update = dynamic_cast<const LinearSparseWeights*>(update);
     _weights.update_weights(*linear_update, coef);
     // _weights._w0 += coef * linear_update->_w0;

@@ -3,7 +3,7 @@
 #include "loss.h"
 
 
-double MSE::compute_loss(double prediction, double target) {
+inline double MSE::compute_loss(double prediction, double target) {
     return std::pow(prediction - target, 2);
 }
 
@@ -19,6 +19,6 @@ double MSE::compute_loss(const Y& prediction, const Y& y) {
 }
 
 
-double MSE::compute_grad(double prediction, double target) {
+inline double MSE::compute_grad(double prediction, double target) {
     return 2 * (prediction - target);
 }

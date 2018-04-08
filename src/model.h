@@ -31,26 +31,26 @@ struct LinearSparseWeights: SparseWeights {
 
 struct LinearWeights {
     LinearWeights(size_t features_number);
-    void update_weights(const LinearSparseWeights& another, double coef); 
+    inline void update_weights(const LinearSparseWeights& another, double coef); 
     double _w0;
     std::vector<double> _w;
 };
 
 
 struct Model {
-    virtual double predict(const SparseVector& object) = 0;
+    inline virtual double predict(const SparseVector& object) = 0;
     virtual Y predict(const X& x) = 0;
-    virtual SparseWeights* compute_grad(const SparseVector& object) = 0;
-    virtual void update_weights(const SparseWeights* update, double coef) = 0;
+    inline virtual SparseWeights* compute_grad(const SparseVector& object) = 0;
+    inline virtual void update_weights(const SparseWeights* update, double coef) = 0;
 };
 
 
 struct LinearModel: Model {
     LinearModel(size_t features_number, bool use_offset);
-    double predict(const SparseVector& object); 
+    inline double predict(const SparseVector& object); 
     Y predict(const X& x);
-    SparseWeights* compute_grad(const SparseVector& object);
-    void update_weights(const SparseWeights* update, double coef);
+    inline SparseWeights* compute_grad(const SparseVector& object);
+    inline void update_weights(const SparseWeights* update, double coef);
 
     bool _use_offset;
     LinearWeights _weights;
