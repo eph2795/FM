@@ -13,7 +13,7 @@
         
 
 void parse_arguments(int argc, char** argv, 
-        std::string* train_file, std::string* test_file, std::string* model_type, 
+        std::string* train_file, std::string* test_file, std::string* model_type, std::string* loss_type, 
         size_t* factors_size, bool* use_offset, size_t* num_epochs, double* learning_rate) {
     for (size_t i = 1; i < argc; i++) {
         try {
@@ -26,6 +26,9 @@ void parse_arguments(int argc, char** argv,
             } else if (strcmp(argv[i], "--model") == 0) {
                 i += 1;
                 *model_type = std::string(argv[i]);
+            } else if (strcmp(argv[i], "--loss") == 0) {
+                i += 1;
+                *loss_type = std::string(argv[i]);
             } else if (strcmp(argv[i], "--factors_size") == 0) {
                 i += 1;
                 *factors_size = std::stoul(argv[i]);
@@ -48,7 +51,7 @@ void parse_arguments(int argc, char** argv,
 
 Model* create_model(const std::string& model_type, size_t features_number, size_t factors_size, bool use_offset) {
     Model* model;
-    if (strcmp(model_type.c_str(), "linear") == 0) {
+     if (strcmp(model_type.c_str(), "linear") == 0) {
         std::cout << "Using linear model." << std::endl;
         model = new LinearModel(features_number, use_offset);
     } else if (strcmp(model_type.c_str(), "fm") == 0) {
@@ -60,15 +63,31 @@ Model* create_model(const std::string& model_type, size_t features_number, size_
 }
 
 
+Loss* create_loss(const std::string& loss_type) {
+    Loss* loss;
+    if (strcmp(loss_type.c_str(), "mse") == 0) {
+        std::cout << "Using MSE loss." << std::endl;
+        loss = new MSE();
+    } else if (strcmp(loss_type.c_str(), "logistic") == 0) {
+        std::cout << "Using logistic loss." << std::endl;
+        loss = new Logistic();
+    } else {
+    }
+    return loss;
+}
+
+
 int main(int argc, char** argv) {
     std::string train_file("../../datasets/train_data.vw");  
     std::string test_file("../../datasets/test_data.vw");  
     std::string model_type("linear");
+    std::string loss_type("mse");
+
     size_t factors_size = 10;
     double learning_rate = 1e-3;
     size_t num_epochs = 10;
     bool use_offset = false;
-    parse_arguments(argc, argv, &train_file, &test_file, &model_type, &factors_size, &use_offset, &num_epochs, &learning_rate);
+    parse_arguments(argc, argv, &train_file, &test_file, &model_type, &loss_type, &factors_size, &use_offset, &num_epochs, &learning_rate);
     clock_t start, finish;
 
     std::cout << "Train data file: " << train_file << std::endl;
@@ -93,7 +112,7 @@ int main(int argc, char** argv) {
     std::cout << std::endl;
 
     Model* model = create_model(model_type, data_reader._features_number, factors_size, use_offset);
-    MSE loss;
+    Loss* loss = create_loss(loss_type);
     std::cout << "Passes number: " << num_epochs << std::endl;
     std::cout << "Learning rate: " << learning_rate << std::endl;
     std::cout << std::endl;
@@ -101,12 +120,12 @@ int main(int argc, char** argv) {
     std::cout << "Start to train model..." << std::endl;
     start = clock();
     Optimizer optimizer(num_epochs, learning_rate);
-    optimizer.train(model, &loss, x_train, y_train);
+    optimizer.train(model, loss, x_train, y_train);
     Y train_prediction = model->predict(x_train);
-    double train_mse = loss.compute_loss(train_prediction, y_train); 
+    double train_mse = loss->compute_loss(train_prediction, y_train); 
     finish = clock();
     std::cout << "Training finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
-    std::cout << "MSE: " << train_mse << std::endl;
+    std::cout << "Loss: " << train_mse << std::endl;
     std::cout << std::endl;
 
     std::cout << "Start to predict on test data..." << std::endl;
@@ -122,11 +141,12 @@ int main(int argc, char** argv) {
     // }
     // print_vector(model._w);
     Y test_prediction = model->predict(x_test);
-    double test_mse = loss.compute_loss(test_prediction, y_test);
+    double test_mse = loss->compute_loss(test_prediction, y_test);
     finish = clock();
     std::cout << "Prediction finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
-    std::cout << "MSE: " << test_mse << std::endl;
+    std::cout << "Loss: " << test_mse << std::endl;
 
     delete model;
+    delete loss;
     return 0;
 }

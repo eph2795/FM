@@ -38,6 +38,7 @@ struct FMSparseWeights: SparseWeights {
 
 struct LinearWeights {
     LinearWeights(size_t features_number);
+    
     void update_weights(const LinearSparseWeights& update, double coef); 
 
     size_t _features_number;
@@ -48,6 +49,7 @@ struct LinearWeights {
 
 struct FMWeights {
     FMWeights(size_t features_number, size_t factors_size);
+
     void update_weights(const FMSparseWeights& update, double coef);
 
     size_t _features_number, _factors_size;
@@ -59,6 +61,7 @@ struct FMWeights {
 
 struct Model {
     virtual ~Model() = 0;
+
     virtual double predict(const SparseVector& object) = 0;
     virtual Y predict(const X& x) = 0;
     virtual SparseWeights* compute_grad(const SparseVector& object) = 0;
@@ -68,6 +71,7 @@ struct Model {
 
 struct LinearModel: Model {
     LinearModel(size_t features_number, bool use_offset);
+
     double predict(const SparseVector& object); 
     Y predict(const X& x);
     SparseWeights* compute_grad(const SparseVector& object);
@@ -82,6 +86,7 @@ struct LinearModel: Model {
 
 struct FMModel: Model {
     FMModel(size_t features_number, size_t factors_size, bool use_offset);
+
     double predict(const SparseVector& object); 
     Y predict(const X& x);
     SparseWeights* compute_grad(const SparseVector& object);

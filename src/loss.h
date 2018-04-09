@@ -6,6 +6,8 @@
 
 
 struct Loss {
+    virtual ~Loss() = 0;
+    
     virtual double compute_loss(double prediction, double target) = 0;
     virtual double compute_loss(const Y& prediction, const Y& tartget) = 0;
     virtual double compute_grad(double prediction, double target) = 0;  
@@ -16,6 +18,13 @@ struct MSE: Loss {
     double compute_loss(double prediction, double target);
     double compute_loss(const Y& prediction, const Y& tartget);
     double compute_grad(double prediction, double target);  
+};
+
+
+struct Logistic: Loss {
+    double compute_loss(double prediction, double target);
+    double compute_loss(const Y& prediction, const Y& tartget);
+    double compute_grad(double prediction, double target);    
 };
 
 
