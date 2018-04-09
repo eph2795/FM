@@ -13,7 +13,8 @@
         
 
 void parse_arguments(int argc, char** argv, 
-        std::string* train_file, std::string* test_file, bool* use_offset, size_t* num_epochs, double* learning_rate) {
+        std::string* train_file, std::string* test_file, std::string* model_type, 
+        size_t* factors_size, bool* use_offset, size_t* num_epochs, double* learning_rate) {
     for (size_t i = 1; i < argc; i++) {
         try {
             if (strcmp(argv[i], "--data") == 0) {
@@ -22,6 +23,12 @@ void parse_arguments(int argc, char** argv,
             } else if (strcmp(argv[i], "--test") == 0) {
                 i += 1;
                 *test_file = std::string(argv[i]);
+            } else if (strcmp(argv[i], "--model") == 0) {
+                i += 1;
+                *model_type = std::string(argv[i]);
+            } else if (strcmp(argv[i], "--factors_size") == 0) {
+                i += 1;
+                *factors_size = std::stoul(argv[i]);
             } else if (strcmp(argv[i], "--use_offset") == 0) {
                 *use_offset = true;
             } else if (strcmp(argv[i], "--passes") == 0) {
@@ -39,8 +46,16 @@ void parse_arguments(int argc, char** argv,
 }
 
 
-Model* create_model(size_t features_number, bool use_offset) {
-    Model* model = new LinearModel(features_number, use_offset);
+Model* create_model(const std::string& model_type, size_t features_number, size_t factors_size, bool use_offset) {
+    Model* model;
+    if (strcmp(model_type.c_str(), "linear") == 0) {
+        std::cout << "Using linear model." << std::endl;
+        model = new LinearModel(features_number, use_offset);
+    } else if (strcmp(model_type.c_str(), "fm") == 0) {
+        std::cout << "Using FM model with " << factors_size << " factors." << std::endl;
+        model = new FMModel(features_number, factors_size, use_offset);
+    } else {
+    }
     return model;
 }
 
@@ -48,19 +63,19 @@ Model* create_model(size_t features_number, bool use_offset) {
 int main(int argc, char** argv) {
     std::string train_file("../../datasets/train_data.vw");  
     std::string test_file("../../datasets/test_data.vw");  
+    std::string model_type("linear");
+    size_t factors_size = 10;
     double learning_rate = 1e-3;
     size_t num_epochs = 10;
     bool use_offset = false;
-    parse_arguments(argc, argv, &train_file, &test_file, &use_offset, &num_epochs, &learning_rate);
+    parse_arguments(argc, argv, &train_file, &test_file, &model_type, &factors_size, &use_offset, &num_epochs, &learning_rate);
     clock_t start, finish;
 
-    std::cout << "Passes number: " << num_epochs << std::endl;
-    std::cout << "Learning rate: " << learning_rate << std::endl;
     std::cout << "Train data file: " << train_file << std::endl;
     std::cout << "Test data file: " << test_file << std::endl;
     std::cout << std::endl;
 
-    std::cout << "Start to preprocessing train file.." << std::endl;
+    std::cout << "Start to preprocessing train file..." << std::endl;
     start = clock();
     DataReader data_reader;
     data_reader.get_columns_info(train_file);
@@ -77,10 +92,14 @@ int main(int argc, char** argv) {
     std::cout << "Reading finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
     std::cout << std::endl;
 
-    std::cout << "Start to train model.." << std::endl;
-    start = clock();
-    Model* model = create_model(data_reader._features_number, use_offset);
+    Model* model = create_model(model_type, data_reader._features_number, factors_size, use_offset);
     MSE loss;
+    std::cout << "Passes number: " << num_epochs << std::endl;
+    std::cout << "Learning rate: " << learning_rate << std::endl;
+    std::cout << std::endl;
+
+    std::cout << "Start to train model..." << std::endl;
+    start = clock();
     Optimizer optimizer(num_epochs, learning_rate);
     optimizer.train(model, &loss, x_train, y_train);
     Y train_prediction = model->predict(x_train);
@@ -90,7 +109,7 @@ int main(int argc, char** argv) {
     std::cout << "MSE: " << train_mse << std::endl;
     std::cout << std::endl;
 
-    std::cout << "Start to predict on test data.." << std::endl;
+    std::cout << "Start to predict on test data..." << std::endl;
     start = clock();
     X x_test;
     Y y_test;
