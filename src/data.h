@@ -3,11 +3,11 @@
 
 #include <string>
 #include <vector>
-#include <map>
+#include <unordered_map>
 
 
 struct SparseVector {
-    std::map<size_t, double> _items;
+    std::unordered_map<size_t, double> _items;
 };
 
 
@@ -23,13 +23,13 @@ struct Y {
 
 struct DataReader {
     DataReader() {};
-    
+
     void get_columns_info(const std::string& filename);
     void fill_with_data(const std::string& filename, X* x, Y* y) const ;
 
     size_t _features_number;
     size_t _objects_number;
-    std::map<std::string, size_t> _features_position;
+    std::unordered_map<std::string, size_t> _features_position;
 };
 
 

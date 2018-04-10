@@ -32,13 +32,13 @@ struct LinearSparseWeights: SparseWeights {
 struct FMSparseWeights: SparseWeights {
     double _w0;
     SparseVector _w;
-    std::map<size_t, std::vector<double>> _v;
+    std::unordered_map<size_t, std::vector<double>> _v;
 };
 
 
 struct LinearWeights {
     LinearWeights(size_t features_number);
-    
+
     void update_weights(const LinearSparseWeights& update, double coef); 
 
     size_t _features_number;
@@ -64,6 +64,7 @@ struct Model {
 
     virtual double predict(const SparseVector& object) = 0;
     virtual Y predict(const X& x) = 0;
+    virtual void train(bool state) = 0;
     virtual SparseWeights* compute_grad(const SparseVector& object) = 0;
     virtual void update_weights(const SparseWeights* update, double coef) = 0;
 };
@@ -74,12 +75,14 @@ struct LinearModel: Model {
 
     double predict(const SparseVector& object); 
     Y predict(const X& x);
+    void train(bool state);
     SparseWeights* compute_grad(const SparseVector& object);
     void update_weights(const SparseWeights* update, double coef);
 
     bool _use_offset;
     // size_t _features_number;
     LinearWeights _weights;
+    LinearSparseWeights* _grad;
 };
 
 
@@ -89,6 +92,7 @@ struct FMModel: Model {
 
     double predict(const SparseVector& object); 
     Y predict(const X& x);
+    void train(bool state);
     SparseWeights* compute_grad(const SparseVector& object);
     void update_weights(const SparseWeights* update, double coef);
 
@@ -96,6 +100,7 @@ struct FMModel: Model {
     // size_t _features_number, _factors_size;
     FMWeights _weights;
     std::vector<double> _precomputed_sp;
+    FMSparseWeights* _grad;
 };
 
 

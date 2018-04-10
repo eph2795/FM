@@ -41,6 +41,7 @@ void Optimizer::train(Model* model, Loss* loss, const X& x, const Y& y) {
     std::vector<size_t> objects_order(N);
     std::iota(objects_order.begin(), objects_order.end(), 0);
 
+    model->train(true);
     // Object w_update;
     for (size_t epoch = 0; epoch < _num_epochs; epoch++) {
         std::random_shuffle(objects_order.begin(), objects_order.end());
@@ -51,9 +52,8 @@ void Optimizer::train(Model* model, Loss* loss, const X& x, const Y& y) {
         for (size_t obj_idx: objects_order) {
             double prediction = model->predict(x._objects[obj_idx]);
             double coef = -_learning_rate * loss->compute_grad(prediction, y._targets[obj_idx]);
-            SparseWeights* m_grad = model->compute_grad(x._objects[obj_idx]);
-            model->update_weights(m_grad, coef);
-            delete m_grad;
+            SparseWeights* model_grad = model->compute_grad(x._objects[obj_idx]);
+            model->update_weights(model_grad, coef);
             // std::cout << "Obj idx: " << obj_idx << std::endl;
             // print_object(m_grad);
             // w_update = update(w_update, m_grad, coef);
@@ -75,4 +75,5 @@ void Optimizer::train(Model* model, Loss* loss, const X& x, const Y& y) {
         // break;
         // print_vector(model->_w);
     }
+    model->train(false);
 }

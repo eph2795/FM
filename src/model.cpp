@@ -91,11 +91,19 @@ Y LinearModel::predict(const X& x) {
 }
 
 
+void LinearModel::train(bool state) {
+    if (state) {
+        _grad = new LinearSparseWeights();
+    } else {
+        delete _grad;
+    }
+}
+
+
 inline SparseWeights* LinearModel::compute_grad(const SparseVector& object) {
-    LinearSparseWeights* m_grad = new LinearSparseWeights;
-    m_grad->_w0 = 1;
-    m_grad->_w = object;
-    return m_grad;
+    _grad->_w0 = 1;
+    _grad->_w = object;
+    return _grad;
 }
 
 
@@ -150,21 +158,30 @@ Y FMModel::predict(const X& x) {
 }
 
 
+void FMModel::train(bool state) {
+    if (state) {
+        _grad = new FMSparseWeights();
+    } else {
+        delete _grad;
+    }
+}
+
+
 inline SparseWeights* FMModel::compute_grad(const SparseVector& object) {
-    FMSparseWeights* m_grad = new FMSparseWeights;
-    m_grad->_w0 = 1;
-    m_grad->_w = object;
+    _grad->_w0 = 1;
+    _grad->_w = object;
+    _grad->_v = std::unordered_map<size_t, std::vector<double>>();
     for (std::pair<size_t, double> feature: object._items) {
-        m_grad->_v[feature.first] = std::vector<double>(_weights._factors_size);
+        _grad->_v[feature.first] = std::vector<double>(_weights._factors_size);
         for (size_t factor_num = 0; factor_num < _weights._factors_size; factor_num++) {
             double term = _precomputed_sp[factor_num];
             // for (std::pair<size_t, double> feature_j: object._items) {
             //     term += _weights._v[feature_j.first][factor_num] * feature_j.second;
             // }
-            m_grad->_v[feature.first][factor_num] = feature.second * (term - _weights._v[feature.first][factor_num] * feature.second);
+            _grad->_v[feature.first][factor_num] = feature.second * (term - _weights._v[feature.first][factor_num] * feature.second);
         }
     }
-    return m_grad;
+    return _grad;
 }
 
 

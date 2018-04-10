@@ -4,7 +4,6 @@
 
 #include <vector>
 #include <utility>
-#include <map>
 
 #include <boost/spirit/include/qi.hpp>
 
