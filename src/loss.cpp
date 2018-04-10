@@ -31,7 +31,8 @@ inline double MSE::compute_grad(double prediction, double target) {
 
 // Поменять target на +- 1
 inline double Logistic::compute_loss(double prediction, double target) {
-    return 1 / std::log(2) * std::log(1 + std::exp(-(2 * target - 1) * prediction));
+    target = 2 * target - 1;
+    return 1 / std::log(2) * std::log(1 + std::exp(-target * prediction));
 }
 
 
@@ -47,5 +48,7 @@ double Logistic::compute_loss(const Y& prediction, const Y& y) {
 
 
 inline double Logistic::compute_grad(double prediction, double target) {
-    return 1 / std::log(2) * (-(2 * target - 1) * std::exp(-(2 * target - 1) * prediction)) / (1 + std::exp(-(2 * target - 1) * prediction));
+    target = 2 * target - 1;
+    double exp = std::exp(-target * prediction);
+    return 1 / std::log(2) * (-target * exp) / (1 + exp);
 }

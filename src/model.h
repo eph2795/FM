@@ -12,15 +12,6 @@ struct SparseWeights {
 };
 
 
-// SparseWeights::~SparseWeights() {};
-
-
-// struct Weights { 
-//     virtual SparseWeights* compute_grad(const SparseVector& object) = 0;
-//     virtual void update_weights(const SparseWeights* another, double coef) = 0; 
-// };
-
-
 struct LinearSparseWeights: SparseWeights {
     // LinearSparseWeights& operator+(const SparseWeights* another);
     // ~LinearSparseWeights() {};
@@ -32,7 +23,7 @@ struct LinearSparseWeights: SparseWeights {
 struct FMSparseWeights: SparseWeights {
     double _w0;
     SparseVector _w;
-    std::unordered_map<size_t, std::vector<double>> _v;
+    std::vector<std::pair<size_t, std::vector<double>>>  _v;
 };
 
 
@@ -79,8 +70,7 @@ struct LinearModel: Model {
     SparseWeights* compute_grad(const SparseVector& object);
     void update_weights(const SparseWeights* update, double coef);
 
-    bool _use_offset;
-    // size_t _features_number;
+    bool _state, _use_offset;
     LinearWeights _weights;
     LinearSparseWeights* _grad;
 };
@@ -96,8 +86,7 @@ struct FMModel: Model {
     SparseWeights* compute_grad(const SparseVector& object);
     void update_weights(const SparseWeights* update, double coef);
 
-    bool _use_offset;
-    // size_t _features_number, _factors_size;
+    bool _state, _use_offset;
     FMWeights _weights;
     std::vector<double> _precomputed_sp;
     FMSparseWeights* _grad;

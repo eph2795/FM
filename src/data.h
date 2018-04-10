@@ -1,13 +1,14 @@
 #ifndef DATA_H
 #define DATA_H
 
+#include <utility>
 #include <string>
 #include <vector>
 #include <unordered_map>
 
 
 struct SparseVector {
-    std::unordered_map<size_t, double> _items;
+    std::vector<std::pair<size_t, double>> _items;
 };
 
 

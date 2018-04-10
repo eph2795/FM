@@ -65,7 +65,7 @@ Model::~Model() {}
 
 
 LinearModel::LinearModel(size_t features_number, bool use_offset)
-        : _use_offset(use_offset), _weights(features_number)
+        : _state(false), _use_offset(use_offset), _weights(features_number)
 {}
 
 
@@ -92,9 +92,11 @@ Y LinearModel::predict(const X& x) {
 
 
 void LinearModel::train(bool state) {
-    if (state) {
+    if (state and not _state) {
+        _state = true;
         _grad = new LinearSparseWeights();
-    } else {
+    } else if (not state and _state) {
+        _state = false;
         delete _grad;
     }
 }
@@ -110,15 +112,11 @@ inline SparseWeights* LinearModel::compute_grad(const SparseVector& object) {
 inline void LinearModel::update_weights(const SparseWeights* update, double coef) {
     const LinearSparseWeights* linear_update = dynamic_cast<const LinearSparseWeights*>(update);
     _weights.update_weights(*linear_update, coef);
-    // _weights._w0 += coef * linear_update->_w0;
-    // for (std::pair<size_t, double> feature: linear_update->_w._items) {
-    //     _weights._w[feature.first] += coef * feature.second;
-    // }
 }
 
 
 FMModel::FMModel(size_t features_number, size_t factors_size, bool use_offset)
-        : _use_offset(use_offset), _weights(features_number, factors_size)
+        : _state(false), _use_offset(use_offset), _weights(features_number, factors_size)
         , _precomputed_sp(factors_size)
 {}
 
@@ -137,9 +135,7 @@ inline double FMModel::predict(const SparseVector& object) {
             term = _weights._v[feature.first][factor_num] * feature.second;
             first += term;
             second += std::pow(term, 2); 
-            // std::cout << _weights._v[feature.first][factor_num] << " ";
         }
-        // std::cout << std::endl << std::endl;
         _precomputed_sp[factor_num] = first;
         prediction += 0.5 * (std::pow(first, 2) - second);
     }
@@ -159,9 +155,11 @@ Y FMModel::predict(const X& x) {
 
 
 void FMModel::train(bool state) {
-    if (state) {
+    if (state and not _state) {
+        _state = true;
         _grad = new FMSparseWeights();
-    } else {
+    } else if (not state and _state) {
+        _state = false;
         delete _grad;
     }
 }
@@ -170,16 +168,17 @@ void FMModel::train(bool state) {
 inline SparseWeights* FMModel::compute_grad(const SparseVector& object) {
     _grad->_w0 = 1;
     _grad->_w = object;
-    _grad->_v = std::unordered_map<size_t, std::vector<double>>();
+    // _grad->_v = std::unordered_map<size_t, std::vector<double>>();
+    _grad->_v.resize(0);
     for (std::pair<size_t, double> feature: object._items) {
-        _grad->_v[feature.first] = std::vector<double>(_weights._factors_size);
+        // _grad->_v[feature.first] = std::vector<double>(_weights._factors_size);
+        std::vector<double> new_grad(_weights._factors_size);
         for (size_t factor_num = 0; factor_num < _weights._factors_size; factor_num++) {
             double term = _precomputed_sp[factor_num];
-            // for (std::pair<size_t, double> feature_j: object._items) {
-            //     term += _weights._v[feature_j.first][factor_num] * feature_j.second;
-            // }
-            _grad->_v[feature.first][factor_num] = feature.second * (term - _weights._v[feature.first][factor_num] * feature.second);
+            // _grad->_v[feature.first][factor_num] = feature.second * (term - _weights._v[feature.first][factor_num] * feature.second);
+            new_grad[factor_num] = feature.second * (term - _weights._v[feature.first][factor_num] * feature.second);
         }
+        _grad->_v.push_back(std::pair<size_t, std::vector<double>>(feature.first, new_grad));
     }
     return _grad;
 }
@@ -188,8 +187,4 @@ inline SparseWeights* FMModel::compute_grad(const SparseVector& object) {
 inline void FMModel::update_weights(const SparseWeights* update, double coef) {
     const FMSparseWeights* fm_update = dynamic_cast<const FMSparseWeights*>(update);
     _weights.update_weights(*fm_update, coef);
-    // _weights._w0 += coef * linear_update->_w0;
-    // for (std::pair<size_t, double> feature: linear_update->_w._items) {
-    //     _weights._w[feature.first] += coef * feature.second;
-    // }
 }

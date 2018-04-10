@@ -91,7 +91,8 @@ void DataReader::fill_with_data(const std::string& file_name, X* x, Y* y) const 
             token = get_token(&line_pos, line, ' ');
             double value = parse_double(token);
             // feauture.value = std::stod(token);
-            object._items[idx] = value;
+            // object._items[idx] = value;
+            object._items.push_back(std::pair<size_t, double>(idx, value));
         }
         x->_objects.push_back(object);
     }
