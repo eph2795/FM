@@ -1,5 +1,18 @@
 # FM
-Simple Factorization Machine implementation
+Наивная реализация Factorization Machine
+
+
+### Структура репозитория
+
+#### Materials
+> Статьи по теме
+
+#### src
+> Исходный код и makefile
+
+#### utils 
+> Python-скрипты для экспериментов и конвертации форматов(чисто для удобства)
+
 
 Использование:
 
