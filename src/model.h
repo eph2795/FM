@@ -30,6 +30,7 @@ struct FMSparseWeights: SparseWeights {
 
 struct LinearWeights {
     LinearWeights(size_t features_number, Regularizer* regularizer);
+    ~LinearWeights();
 
     void update_weights(const LinearSparseWeights& update, double coef); 
 
@@ -42,6 +43,7 @@ struct LinearWeights {
 
 struct FMWeights {
     FMWeights(size_t features_number, size_t factors_size, Regularizer* regularizer);
+    ~FMWeights();
 
     void update_weights(const FMSparseWeights& update, double coef);
 
@@ -66,6 +68,7 @@ struct Model {
 
 struct LinearModel: Model {
     LinearModel(size_t features_number, bool use_offset, Regularizer* regularizer);
+    ~LinearModel();
 
     double predict(const SparseVector& object); 
     Y predict(const X& x);
@@ -82,7 +85,8 @@ struct LinearModel: Model {
 
 struct FMModel: Model {
     FMModel(size_t features_number, size_t factors_size, bool use_offset, Regularizer* regularizer);
-
+    ~FMModel();
+    
     double predict(const SparseVector& object); 
     Y predict(const X& x);
     void train(bool state);

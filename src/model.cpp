@@ -35,6 +35,11 @@ LinearWeights::LinearWeights(size_t features_number, Regularizer* regularizer)
 {}
 
 
+LinearWeights::~LinearWeights() {
+    delete _regularizer;
+}
+
+
 inline void LinearWeights::update_weights(const LinearSparseWeights& update, double coef) {
     _w0 += coef * (update._w0 + _regularizer->get_update(_w0));
     for (std::pair<size_t, double> item: update._w._items) {
@@ -48,6 +53,11 @@ FMWeights::FMWeights(size_t features_number, size_t factors_size, Regularizer* r
         ,_w(_features_number), _v(_features_number, std::vector<double>(factors_size, std::sqrt(1.0 / factors_size)))
         ,_regularizer(regularizer)
 {}
+
+
+FMWeights::~FMWeights() {
+    delete _regularizer;
+}
 
 
 inline void FMWeights::update_weights(const FMSparseWeights& update, double coef) {
@@ -69,6 +79,11 @@ Model::~Model() {}
 LinearModel::LinearModel(size_t features_number, bool use_offset, Regularizer* regularizer)
         : _state(false), _use_offset(use_offset), _weights(features_number, regularizer)
 {}
+
+
+LinearModel::~LinearModel() {
+    delete _grad;
+}
 
 
 inline double LinearModel::predict(const SparseVector& object) {
@@ -124,6 +139,11 @@ FMModel::FMModel(size_t features_number, size_t factors_size, bool use_offset, R
         : _state(false), _use_offset(use_offset), _weights(features_number, factors_size, regularizer)
         , _precomputed_sp(factors_size)
 {}
+
+
+FMModel::~FMModel() {
+    delete _grad;
+}
 
 
 inline double FMModel::predict(const SparseVector& object) {

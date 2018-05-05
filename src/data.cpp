@@ -30,7 +30,10 @@ double parse_double(const std::string& token) {
 }
 
 
-void DataReader::get_columns_info(const std::string& file_name) {
+DataReader::~DataReader() {}
+
+
+void DataReaderOHE::get_columns_info(const std::string& file_name) {
     _features_number = 0;
 
     std::ifstream input(file_name.c_str());
@@ -70,7 +73,7 @@ void DataReader::get_columns_info(const std::string& file_name) {
 }
 
 
-void DataReader::fill_with_data(const std::string& file_name, X* x, Y* y) const {
+void DataReaderOHE::fill_with_data(const std::string& file_name, X* x, Y* y) const {
     // x->_objects.resize(_objects_number);
     // y->_targets.resize(_objects_number);
 
@@ -88,6 +91,43 @@ void DataReader::fill_with_data(const std::string& file_name, X* x, Y* y) const 
         for (size_t token_num = 0; line_pos < line.size(); token_num++) {        
             token = get_token(&line_pos, line, ':');
             size_t idx = _features_position.at(token);
+            token = get_token(&line_pos, line, ' ');
+            double value = parse_double(token);
+            // feauture.value = std::stod(token);
+            // object._items[idx] = value;
+            object._items.push_back(std::pair<size_t, double>(idx, value));
+        }
+        x->_objects.push_back(object);
+    }
+}
+
+
+DataReaderHash::DataReaderHash(size_t bits_number): 
+        _features_number(std::pow(2, bits_number)), _bits_number(bits_number) 
+{}
+
+
+void DataReaderHash::get_columns_info(const std::string& file_name) {}
+
+
+void DataReaderHash::fill_with_data(const std::string& file_name, X* x, Y* y) const {
+    // x->_objects.resize(_objects_number);
+    // y->_targets.resize(_objects_number);
+
+    std::ifstream input(file_name.c_str());
+    std::string line, token;
+    for (size_t line_num = 0; std::getline(input, line); line_num++) {
+        size_t line_pos = 0;
+        
+        token = get_token(&line_pos, line, ' ');
+        y->_targets.push_back(parse_double(token));
+        // y->_targets.push_back(std::stod(token));
+
+        token = get_token(&line_pos, line, ' ');
+        SparseVector object;
+        for (size_t token_num = 0; line_pos < line.size(); token_num++) {        
+            token = get_token(&line_pos, line, ':');
+            size_t idx = _hash(token) % _features_number;
             token = get_token(&line_pos, line, ' ');
             double value = parse_double(token);
             // feauture.value = std::stod(token);

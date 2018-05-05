@@ -15,7 +15,8 @@
 
 void parse_arguments(int argc, char** argv, 
         std::string* train_file, std::string* test_file, std::string* model_type, std::string* loss_type, 
-        size_t* factors_size, bool* use_offset, size_t* num_epochs, double* learning_rate, std::string* reg_type, double* C) {
+        size_t* factors_size, bool* use_offset, size_t* num_epochs, double* learning_rate, std::string* reg_type, double* C,
+        std::string* index_type, size_t* bits_number) {
     for (size_t i = 1; i < static_cast<size_t>(argc); i++) {
         try {
             if (strcmp(argv[i], "--data") == 0) {
@@ -47,7 +48,13 @@ void parse_arguments(int argc, char** argv,
             } else if (strcmp(argv[i], "-C") == 0) {
                 i += 1;
                 *C = std::stod(argv[i]);
-            }
+            } else if (strcmp(argv[i], "--index_type") == 0) {
+                i += 1;
+                *index_type = std::string(argv[i]);
+            } else if (strcmp(argv[i], "--bits_number") == 0) {
+                i += 1;
+                *bits_number = std::stoul(argv[i]);
+            }   
         } 
         catch (std::invalid_argument) {
             throw std::invalid_argument("Wrong arguments format!");
@@ -109,6 +116,21 @@ Loss* create_loss(const std::string& loss_type) {
 }
 
 
+DataReader* create_reader(const std::string& index_type, size_t bits_number) {
+    DataReader* data_reader;
+    if (strcmp(index_type.c_str(), "ohe") == 0) {
+        std::cout << "Use OHE features." << std::endl;
+        data_reader = new DataReaderOHE();
+    } else if (strcmp(index_type.c_str(), "hash") == 0) {
+        std::cout << "Use feature hashing with " << bits_number << " bits." << std::endl;
+        data_reader = new DataReaderHash(bits_number); 
+    } else {
+        std::cout << "Wrong index type! Terminated." << std::endl;
+        throw;
+    }
+    return data_reader;
+}
+
 
 int main(int argc, char** argv) {
     std::string train_file("../../datasets/train_data.vw");  
@@ -116,23 +138,26 @@ int main(int argc, char** argv) {
     std::string model_type("linear");
     std::string loss_type("mse");
     std::string reg_type("L2");
+    std::string index_type("ohe");
 
+    size_t bits_number = 10;
     size_t factors_size = 10;
     double learning_rate = 1e-3;
     double C=1e-3;
     size_t num_epochs = 10;
     bool use_offset = false;
-    parse_arguments(argc, argv, &train_file, &test_file, &model_type, &loss_type, &factors_size, &use_offset, &num_epochs, &learning_rate, &reg_type, &C);
+    parse_arguments(argc, argv, &train_file, &test_file, &model_type, &loss_type, &factors_size, &use_offset, 
+        &num_epochs, &learning_rate, &reg_type, &C, &index_type, &bits_number);
     clock_t start, finish;
 
     std::cout << "Train data file: " << train_file << std::endl;
     std::cout << "Test data file: " << test_file << std::endl;
     std::cout << std::endl;
 
+    DataReader* data_reader = create_reader(index_type, bits_number);
     std::cout << "Start to preprocessing train file..." << std::endl;
     start = clock();
-    DataReader data_reader;
-    data_reader.get_columns_info(train_file);
+    data_reader->get_columns_info(train_file);
     finish = clock();
     std::cout << "Train file preprocessed! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
     std::cout << std::endl;
@@ -141,12 +166,12 @@ int main(int argc, char** argv) {
     start = clock();
     X x_train;
     Y y_train;  
-    data_reader.fill_with_data(train_file, &x_train, &y_train);
+    data_reader->fill_with_data(train_file, &x_train, &y_train);
     finish = clock();
     std::cout << "Reading finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
     std::cout << std::endl;
 
-    Model* model = create_model(model_type, data_reader._features_number, factors_size, use_offset, reg_type, C);
+    Model* model = create_model(model_type, data_reader->_features_number, factors_size, use_offset, reg_type, C);
     Loss* loss = create_loss(loss_type);
     std::cout << "Passes number: " << num_epochs << std::endl;
     std::cout << "Learning rate: " << learning_rate << std::endl;
@@ -167,7 +192,7 @@ int main(int argc, char** argv) {
     start = clock();
     X x_test;
     Y y_test;
-    data_reader.fill_with_data(test_file, &x_test, &y_test);
+    data_reader->fill_with_data(test_file, &x_test, &y_test);
     // for (size_t i = 0; i < x_test._objects.size(); i++) {
     //     for (size_t j = 0; j < x_test._objects[i]._features.size(); j++) {
     //         std::cout << "Idx: " << x_test._objects[i]._features[j].idx << ", value: " << x_test._objects[i]._features[j].value << "\t";
@@ -181,6 +206,7 @@ int main(int argc, char** argv) {
     std::cout << "Prediction finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
     std::cout << "Loss: " << test_mse << std::endl;
 
+    delete data_reader;
     delete model;
     delete loss;
     return 0;
