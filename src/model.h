@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "data.h"
+#include "regularizer.h"
 
 
 struct SparseWeights {
@@ -28,18 +29,19 @@ struct FMSparseWeights: SparseWeights {
 
 
 struct LinearWeights {
-    LinearWeights(size_t features_number);
+    LinearWeights(size_t features_number, Regularizer* regularizer);
 
     void update_weights(const LinearSparseWeights& update, double coef); 
 
     size_t _features_number;
     double _w0;
     std::vector<double> _w;
+    Regularizer* _regularizer;
 };
 
 
 struct FMWeights {
-    FMWeights(size_t features_number, size_t factors_size);
+    FMWeights(size_t features_number, size_t factors_size, Regularizer* regularizer);
 
     void update_weights(const FMSparseWeights& update, double coef);
 
@@ -47,6 +49,7 @@ struct FMWeights {
     double _w0;
     std::vector<double> _w;
     std::vector<std::vector<double>> _v;
+    Regularizer* _regularizer;
 };
 
 
@@ -56,18 +59,18 @@ struct Model {
     virtual double predict(const SparseVector& object) = 0;
     virtual Y predict(const X& x) = 0;
     virtual void train(bool state) = 0;
-    virtual SparseWeights* compute_grad(const SparseVector& object) = 0;
+    virtual SparseWeights* compute_grad(const SparseVector& object, double coef) = 0;
     virtual void update_weights(const SparseWeights* update, double coef) = 0;
 };
 
 
 struct LinearModel: Model {
-    LinearModel(size_t features_number, bool use_offset);
+    LinearModel(size_t features_number, bool use_offset, Regularizer* regularizer);
 
     double predict(const SparseVector& object); 
     Y predict(const X& x);
     void train(bool state);
-    SparseWeights* compute_grad(const SparseVector& object);
+    SparseWeights* compute_grad(const SparseVector& object, double coef);
     void update_weights(const SparseWeights* update, double coef);
 
     bool _state, _use_offset;
@@ -78,12 +81,12 @@ struct LinearModel: Model {
 
 
 struct FMModel: Model {
-    FMModel(size_t features_number, size_t factors_size, bool use_offset);
+    FMModel(size_t features_number, size_t factors_size, bool use_offset, Regularizer* regularizer);
 
     double predict(const SparseVector& object); 
     Y predict(const X& x);
     void train(bool state);
-    SparseWeights* compute_grad(const SparseVector& object);
+    SparseWeights* compute_grad(const SparseVector& object, double coef);
     void update_weights(const SparseWeights* update, double coef);
 
     bool _state, _use_offset;

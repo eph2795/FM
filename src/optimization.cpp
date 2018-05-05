@@ -51,9 +51,9 @@ void Optimizer::train(Model* model, Loss* loss, const X& x, const Y& y) {
         // size_t i = 0;
         for (size_t obj_idx: objects_order) {
             double prediction = model->predict(x._objects[obj_idx]);
-            double coef = -_learning_rate * loss->compute_grad(prediction, y._targets[obj_idx]);
-            SparseWeights* model_grad = model->compute_grad(x._objects[obj_idx]);
-            model->update_weights(model_grad, coef);
+            double coef = loss->compute_grad(prediction, y._targets[obj_idx]);
+            SparseWeights* model_grad = model->compute_grad(x._objects[obj_idx], coef);
+            model->update_weights(model_grad, -_learning_rate);
             // std::cout << "Obj idx: " << obj_idx << std::endl;
             // print_object(m_grad);
             // w_update = update(w_update, m_grad, coef);
