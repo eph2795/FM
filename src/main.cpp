@@ -84,7 +84,7 @@ Model* create_model(const std::string& model_type, size_t features_number, size_
     Regularizer* regularizer = create_regularizer(reg_type, C);
     Model* model;
     if (use_offset) {
-        std::cout << "Use offset w0." << std::endl;
+        std::cout << "Using offset w0." << std::endl;
     }
     if (strcmp(model_type.c_str(), "linear") == 0) {
         std::cout << "Using linear model." << std::endl;
@@ -119,10 +119,10 @@ Loss* create_loss(const std::string& loss_type) {
 DataReader* create_reader(const std::string& index_type, size_t bits_number) {
     DataReader* data_reader;
     if (strcmp(index_type.c_str(), "ohe") == 0) {
-        std::cout << "Use OHE features." << std::endl;
+        std::cout << "Using OHE features." << std::endl;
         data_reader = new DataReaderOHE();
     } else if (strcmp(index_type.c_str(), "hash") == 0) {
-        std::cout << "Use feature hashing with " << bits_number << " bits." << std::endl;
+        std::cout << "Using feature hashing with " << bits_number << " bits." << std::endl;
         data_reader = new DataReaderHash(bits_number); 
     } else {
         std::cout << "Wrong index type! Terminated." << std::endl;
@@ -171,7 +171,8 @@ int main(int argc, char** argv) {
     std::cout << "Reading finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
     std::cout << std::endl;
 
-    Model* model = create_model(model_type, data_reader->_features_number, factors_size, use_offset, reg_type, C);
+    // std::cout << data_reader->_features_number << std::endl;
+    Model* model = create_model(model_type, data_reader->get_features_number(), factors_size, use_offset, reg_type, C);
     Loss* loss = create_loss(loss_type);
     std::cout << "Passes number: " << num_epochs << std::endl;
     std::cout << "Learning rate: " << learning_rate << std::endl;

@@ -27,9 +27,9 @@ struct DataReader {
     virtual ~DataReader() = 0;
 
     virtual void get_columns_info(const std::string& filename) = 0;
-    virtual void fill_with_data(const std::string& filename, X* x, Y* y) const = 0;
-
-    size_t _features_number;
+    virtual size_t get_features_number() const = 0;
+    virtual size_t get_feature_index(const std::string& feature_name) const = 0;
+    void fill_with_data(const std::string& filename, X* x, Y* y) const;
 };
 
 
@@ -37,7 +37,9 @@ struct DataReaderOHE: DataReader {
     DataReaderOHE() {};
 
     void get_columns_info(const std::string& filename);
-    void fill_with_data(const std::string& filename, X* x, Y* y) const ;
+    size_t get_features_number() const;
+    size_t get_feature_index(const std::string& feature_name) const;
+    // void fill_with_data(const std::string& filename, X* x, Y* y) const ;
 
     size_t _features_number;
     size_t _objects_number;
@@ -49,9 +51,10 @@ struct DataReaderHash: DataReader {
     DataReaderHash(size_t bits_number);
 
     void get_columns_info(const std::string& filename);
-    void fill_with_data(const std::string& filename, X* x, Y* y) const ;
+    size_t get_features_number() const;
+    size_t get_feature_index(const std::string& feature_name) const;
+    // void fill_with_data(const std::string& filename, X* x, Y* y) const ;
 
-    size_t _features_number;
     size_t _bits_number;
     std::hash<std::string> _hash;
 };

@@ -68,7 +68,7 @@ struct Model {
 
 struct LinearModel: Model {
     LinearModel(size_t features_number, bool use_offset, Regularizer* regularizer);
-    ~LinearModel();
+    // ~LinearModel();
 
     double predict(const SparseVector& object); 
     Y predict(const X& x);
@@ -85,7 +85,7 @@ struct LinearModel: Model {
 
 struct FMModel: Model {
     FMModel(size_t features_number, size_t factors_size, bool use_offset, Regularizer* regularizer);
-    ~FMModel();
+    // ~FMModel();
     
     double predict(const SparseVector& object); 
     Y predict(const X& x);

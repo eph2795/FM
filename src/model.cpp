@@ -81,9 +81,9 @@ LinearModel::LinearModel(size_t features_number, bool use_offset, Regularizer* r
 {}
 
 
-LinearModel::~LinearModel() {
-    delete _grad;
-}
+// LinearModel::~LinearModel() {
+//     delete _grad;
+// }
 
 
 inline double LinearModel::predict(const SparseVector& object) {
@@ -141,9 +141,9 @@ FMModel::FMModel(size_t features_number, size_t factors_size, bool use_offset, R
 {}
 
 
-FMModel::~FMModel() {
-    delete _grad;
-}
+// FMModel::~FMModel() {
+//     delete _grad;
+// }
 
 
 inline double FMModel::predict(const SparseVector& object) {
