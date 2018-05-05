@@ -76,6 +76,9 @@ Model* create_model(const std::string& model_type, size_t features_number, size_
                     const std::string& reg_type, double C) {
     Regularizer* regularizer = create_regularizer(reg_type, C);
     Model* model;
+    if (use_offset) {
+        std::cout << "Use offset w0." << std::endl;
+    }
     if (strcmp(model_type.c_str(), "linear") == 0) {
         std::cout << "Using linear model." << std::endl;
         model = new LinearModel(features_number, use_offset, regularizer);

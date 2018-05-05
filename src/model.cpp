@@ -36,9 +36,9 @@ LinearWeights::LinearWeights(size_t features_number, Regularizer* regularizer)
 
 
 inline void LinearWeights::update_weights(const LinearSparseWeights& update, double coef) {
-    _w0 += coef * update._w0;
+    _w0 += coef * (update._w0 + _regularizer->get_update(_w0));
     for (std::pair<size_t, double> item: update._w._items) {
-        _w[item.first] += coef * item.second;
+        _w[item.first] += coef * (item.second + _regularizer->get_update(_w[item.first]));
     }
 }
 
@@ -51,13 +51,13 @@ FMWeights::FMWeights(size_t features_number, size_t factors_size, Regularizer* r
 
 
 inline void FMWeights::update_weights(const FMSparseWeights& update, double coef) {
-    _w0 += coef * update._w0;
+    _w0 += coef * (update._w0 + _regularizer->get_update(_w0));
     for (std::pair<size_t, double> item: update._w._items) {
-        _w[item.first] += coef * item.second;
+        _w[item.first] += coef * (item.second + _regularizer->get_update(_w[item.first]));
     }
     for (std::pair<size_t, std::vector<double>> factors: update._v) {
         for (size_t factor_num = 0; factor_num < _factors_size; factor_num++) {
-            _v[factors.first][factor_num] += coef * factors.second[factor_num];
+            _v[factors.first][factor_num] += coef * (factors.second[factor_num] + _regularizer->get_update(_v[factors.first][factor_num]));
         }
     }
 }
@@ -74,7 +74,6 @@ LinearModel::LinearModel(size_t features_number, bool use_offset, Regularizer* r
 inline double LinearModel::predict(const SparseVector& object) {
     double prediction = 0;
     if (_use_offset) {
-        _weights._w0 += 
         prediction += _weights._w0;
     } 
     for (std::pair<size_t, double> feature: object._items) {
@@ -106,13 +105,10 @@ void LinearModel::train(bool state) {
 
 
 inline SparseWeights* LinearModel::compute_grad(const SparseVector& object, double coef) {
-    _grad->_w0 = 1;
+    _grad->_w0 = coef;
     _grad->_w = object;
-    // for (auto& feature: _grad->_w._items) {
-    //     feature.second *= coef;
-    // }
-    for (size_t i = 0; i < _grad->_w._items.size(); i++) {
-        _grad->_w._items[i].second *= coef;
+    for (auto& feature: _grad->_w._items) {
+        feature.second *= coef;
     }
     return _grad;
 }
@@ -133,6 +129,7 @@ FMModel::FMModel(size_t features_number, size_t factors_size, bool use_offset, R
 inline double FMModel::predict(const SparseVector& object) {
     double prediction = 0;
     if (_use_offset) {
+        // _weights._w0 += _regularizer(_weights._w0);
         prediction += _weights._w0;
     } 
     for (std::pair<size_t, double> feature: object._items) {
@@ -175,17 +172,20 @@ void FMModel::train(bool state) {
 
 
 inline SparseWeights* FMModel::compute_grad(const SparseVector& object, double coef) {
-    _grad->_w0 = 1;
+    _grad->_w0 = coef;
     _grad->_w = object;
+    for (auto& feature: _grad->_w._items) {
+        feature.second *= coef;
+    }
     // _grad->_v = std::unordered_map<size_t, std::vector<double>>();
     _grad->_v.resize(0);
-    for (std::pair<size_t, double> feature: object._items) {
+    for (auto feature: object._items) {
         // _grad->_v[feature.first] = std::vector<double>(_weights._factors_size);
         std::vector<double> new_grad(_weights._factors_size);
         for (size_t factor_num = 0; factor_num < _weights._factors_size; factor_num++) {
             double term = _precomputed_sp[factor_num];
             // _grad->_v[feature.first][factor_num] = feature.second * (term - _weights._v[feature.first][factor_num] * feature.second);
-            new_grad[factor_num] = feature.second * (term - _weights._v[feature.first][factor_num] * feature.second);
+            new_grad[factor_num] = coef * feature.second * (term - _weights._v[feature.first][factor_num] * feature.second);
         }
         _grad->_v.push_back(std::pair<size_t, std::vector<double>>(feature.first, new_grad));
     }
