@@ -47,6 +47,7 @@
 
 В техническом плане
 * Feature hashing(альтернатива для OHE) 
+
     DONE
 * Dump модели
 * Запись predictions в текстовый файл
