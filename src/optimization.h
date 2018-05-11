@@ -7,7 +7,15 @@
 
 
 struct Optimizer {
-    Optimizer(size_t num_epochs, double learning_rate);
+    virtual ~Optimizer() = 0;
+    
+    virtual void train(Model* model, Loss* loss, const X& x_train, const Y& y_train, 
+                       bool use_validation, const X& x_val, const Y& y_val) = 0;
+};
+
+
+struct SGDOptimizer: Optimizer {
+    SGDOptimizer(size_t num_epochs, double learning_rate);
     
     void train(Model* model, Loss* loss, const X& x_train, const Y& y_train, 
                bool use_validation, const X& x_val, const Y& y_val); 

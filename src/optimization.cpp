@@ -27,13 +27,15 @@ void print_object(const SparseVector& object) {
 }
 
 
+ Optimizer::~Optimizer() {};
 
-Optimizer::Optimizer(size_t num_epochs, double learning_rate)
+
+SGDOptimizer::SGDOptimizer(size_t num_epochs, double learning_rate)
         : _num_epochs(num_epochs), _learning_rate(learning_rate)
 {}
 
 
-void Optimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_train, 
+void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_train, 
         bool use_validation, const X& x_val, const Y& y_val) {
     size_t N = x_train._objects.size();
     // size_t f = model->_w.size();
@@ -84,11 +86,11 @@ void Optimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_tra
         }
 
         finish = clock();
-        std::cout << "Epoch " << epoch << " finished. Train loss: " << train_mse << ", ";
+        std::cout << "Epoch " << epoch << " finished.\n \tTrain loss: " << train_mse << ",\n";
         if (use_validation) {
-            std::cout << "validation loss: " << val_mse << ", ";
+            std::cout << "\tvalidation loss: " << val_mse << ",\n";
         }
-        std::cout << "elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
+        std::cout << "\telapsed time: " << double(finish - start) / CLOCKS_PER_SEC << "." << std::endl;
         // break;
         // print_vector(model->_w);
     }
