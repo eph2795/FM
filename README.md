@@ -71,7 +71,7 @@ cd src
 
 make all
 
-./main --data ../../datasets/rcv1/rcv1.vw --test ../../datasets/rcv1/rcv1.test.vw --model fm --loss logistic --factors_size 5 --use_offset --passes 10 --learning_rate 0.01
+./main --train ../../datasets/rcv1/rcv1.vw --validation ../../datasets/rcv1/rcv1.test.vw --test ../../datasets/rcv1/rcv1.test.vw --model fm --loss logistic --factors_size 5 --use_offset --passes 10 --learning_rate 0.01 --reg_type l2 -C 0.00001 --index_type hash --bits_number 15
 
 
 ### Сравнение c vw
