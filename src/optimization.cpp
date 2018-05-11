@@ -1,7 +1,6 @@
 #include <iostream>
-
+#include <ctime>
 #include <algorithm>
-
 #include <vector>
 
 #include "data.h"
@@ -34,8 +33,9 @@ Optimizer::Optimizer(size_t num_epochs, double learning_rate)
 {}
 
 
-void Optimizer::train(Model* model, Loss* loss, const X& x, const Y& y) {
-    size_t N = x._objects.size();
+void Optimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_train, 
+        bool use_validation, const X& x_val, const Y& y_val) {
+    size_t N = x_train._objects.size();
     // size_t f = model->_w.size();
 
     std::vector<size_t> objects_order(N);
@@ -49,10 +49,13 @@ void Optimizer::train(Model* model, Loss* loss, const X& x, const Y& y) {
         // size_t batch_N = N / _batch_size + (N % _batch_size != 0);
         // std::cout << "Data size: " << N << ", number of batches: " << batch_N << std::endl;
         // size_t i = 0;
+        double start, finish, train_mse = 0;
+        start = clock();
         for (size_t obj_idx: objects_order) {
-            double prediction = model->predict(x._objects[obj_idx]);
-            double coef = loss->compute_grad(prediction, y._targets[obj_idx]);
-            SparseWeights* model_grad = model->compute_grad(x._objects[obj_idx], coef);
+            double prediction = model->predict(x_train._objects[obj_idx]);
+            train_mse += loss->compute_loss(prediction, y_train._targets[obj_idx]);
+            double coef = loss->compute_grad(prediction, y_train._targets[obj_idx]);
+            SparseWeights* model_grad = model->compute_grad(x_train._objects[obj_idx], coef);
             model->update_weights(model_grad, -_learning_rate);
             // std::cout << "Obj idx: " << obj_idx << std::endl;
             // print_object(m_grad);
@@ -72,6 +75,20 @@ void Optimizer::train(Model* model, Loss* loss, const X& x, const Y& y) {
             // // print_vector(model->_w);
             // i += 1;
         }
+        train_mse /= N;
+        
+        double val_mse;
+        if (use_validation) {
+            Y val_prediction = model->predict(x_val);
+            val_mse = loss->compute_loss(val_prediction, y_val);
+        }
+
+        finish = clock();
+        std::cout << "Epoch " << epoch << " finished. Train loss: " << train_mse << ", ";
+        if (use_validation) {
+            std::cout << "validation loss: " << val_mse << ", ";
+        }
+        std::cout << "elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
         // break;
         // print_vector(model->_w);
     }
