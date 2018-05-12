@@ -14,6 +14,8 @@ struct SparseVector {
 
 
 struct X {
+    X to_csr() const;
+    
     std::vector<SparseVector> _objects;
     std::string _data_type;
     size_t _features_number;

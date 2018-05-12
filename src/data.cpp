@@ -9,6 +9,27 @@
 #include "data.h"
 
 
+X X::to_csr() const {
+    X x_csr;
+    x_csr._features_number = _features_number;
+    x_csr._objects_number = _objects_number;
+    x_csr._data_type = "csr";
+
+    x_csr._objects.resize(x_csr._objects_number);
+    size_t object_idx;
+    double feature_value;
+
+    for (size_t feature_idx = 0; feature_idx < _features_number; feature_idx++) {
+        for (const auto& item: _objects[feature_idx]._items) {
+            object_idx = item.first;
+            feature_value = item.second;
+            x_csr._objects[object_idx]._items.push_back(std::pair<size_t, double>(feature_idx, feature_value));
+        }
+    } 
+    return x_csr;
+}
+
+
 std::string get_token(size_t* pos, const std::string& line, char sep) {
     size_t i = line.find(sep, *pos);
     if (i == std::string::npos) {

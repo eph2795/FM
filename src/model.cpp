@@ -11,27 +11,6 @@
 #include "regularizer.h"
 
 
-X _to_csr(const X& x) {
-    X x_csr;
-    x_csr._features_number = x._features_number;
-    x_csr._objects_number = x._objects_number;
-    x_csr._data_type = "csr";
-
-    x_csr._objects.resize(x_csr._objects_number);
-    size_t object_idx;
-    double feature_value;
-
-    for (size_t feature_idx = 0; feature_idx < x._features_number; feature_idx++) {
-        for (const auto& item: x._objects[feature_idx]._items) {
-            object_idx = item.first;
-            feature_value = item.second;
-            x_csr._objects[object_idx]._items.push_back(std::pair<size_t, double>(feature_idx, feature_value));
-        }
-    } 
-    return x_csr;
-}
-
-
 SparseWeights::~SparseWeights() {}
 
 // LinearSparseWeights& LinearSparseWeights::operator+(const LinearSparseWeights& another) {
@@ -161,27 +140,13 @@ Y LinearModel::predict(const X& x) {
 }
 
 
-void LinearModel::train(bool state, const std::string& method, size_t num_objects) {
-    if (strcmp(method.c_str(), "sgd") == 0) {
-        if (state and not _state) {
-            _state = true;
-            _grad = new LinearSparseWeights();
-        } else if (not state and _state) {
-            _state = false;
-            delete _grad;
-        }
-    } else if (strcmp(method.c_str(), "als") == 0) {
-        if (state and not _state) {
-            _state = true;
-            _e.resize(num_objects, 0);
-            // _x_squares.resize(_weights._features_number, 0);
-            // _numerators.resize(_weights._features_number, 0);
-        }  else if (not state and _state) {
-            _state = false;
-            _e.resize(0);
-            // _x_squares.resize(0);
-            // _numerators.resize(0);
-        } 
+void LinearModel::train_sgd(bool state) {
+    if (state and not _state) {
+        _state = true;
+        _grad = new LinearSparseWeights();
+    } else if (not state and _state) {
+         _state = false;
+        delete _grad;
     }
 }
 
@@ -215,21 +180,11 @@ inline void LinearModel::update_weights(const SparseWeights* update, double coef
 }
 
 
-void LinearModel::init_als(Loss* loss, const X& x, const Y& y) {
-    std::cout << _e.size() << " " << y._targets.size() << std::endl;
+void LinearModel::init_als(Loss* loss, const X& x, const X& x_csr, const Y& y) {
+    _e.resize(x._objects_number);
     for (size_t object_idx = 0; object_idx < x._objects_number; object_idx++) {
-        _e[object_idx] = _weights._w0 - y._targets[object_idx];
+        _e[object_idx] = predict(x_csr._objects[object_idx]) - y._targets[object_idx];
     } 
-    std::cout << x._objects.size() << std::endl;
-    size_t object_idx;
-    double feature_value;
-    for (size_t feature_idx = 0; feature_idx < x._features_number; feature_idx++) {
-        for (const auto& item: x._objects[feature_idx]._items) {
-            object_idx = item.first;
-            feature_value = item.second;
-            _e[object_idx] += _weights._w[feature_idx] * feature_value; 
-        }
-    }
 }
 
 
@@ -318,17 +273,16 @@ inline double FMModel::predict(const SparseVector& object) {
 
 
 Y FMModel::predict(const X& x) {
-    X x_csr = _to_csr(x);
     Y prediction;
-    prediction._targets.resize(x_csr._objects.size());
-    for (size_t obj_idx = 0; obj_idx < x_csr._objects.size(); obj_idx++) {
-        prediction._targets[obj_idx] = predict(x_csr._objects[obj_idx]);
+    prediction._targets.resize(x._objects.size());
+    for (size_t obj_idx = 0; obj_idx < x._objects.size(); obj_idx++) {
+        prediction._targets[obj_idx] = predict(x._objects[obj_idx]);
     }
     return prediction;
 }
 
 
-void FMModel::train(bool state, const std::string& method, size_t num_objects) {
+void FMModel::train_sgd(bool state) {
     if (state and not _state) {
         _state = true;
         _grad = new FMSparseWeights();
@@ -372,10 +326,8 @@ inline void FMModel::update_weights(const SparseWeights* update, double coef) {
 }
 
 
-void FMModel::init_als(Loss* loss, const X& x, const Y& y) {
-    X x_csr = _to_csr(x);
-
-    _e.resize(x._objects_number, 0);
+void FMModel::init_als(Loss* loss, const X& x, const X& x_csr, const Y& y) {
+    _e.resize(x._objects_number);
     _q.resize(x._objects_number, std::vector<double>(_weights._factors_size, 0));
 
     for (size_t object_idx = 0; object_idx < x_csr._objects_number; object_idx++) {

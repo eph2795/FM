@@ -42,7 +42,7 @@ void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_
     std::vector<size_t> objects_order(N);
     std::iota(objects_order.begin(), objects_order.end(), 0);
 
-    model->train(true, "sgd", x_train._objects.size());
+    model->train_sgd(true);
     for (size_t epoch = 0; epoch < _num_epochs; epoch++) {
         std::random_shuffle(objects_order.begin(), objects_order.end());
 
@@ -72,7 +72,7 @@ void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_
         }
         std::cout << "\telapsed time: " << double(finish - start) / CLOCKS_PER_SEC << "." << std::endl;
     }
-    model->train(false, "sgd", x_train._objects.size());
+    model->train_sgd(false);
 }
 
 
@@ -81,9 +81,10 @@ ALSOptimizer::ALSOptimizer(size_t num_epochs): _num_epochs(num_epochs) {}
 
 void ALSOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_train, 
         bool use_validation, const X& x_val, const Y& y_val) {
+    X x_train_csr = x_train.to_csr();
+    X x_val_csr = x_val.to_csr();
 
-    model->train(true, "als", y_train._targets.size());
-    model->init_als(loss, x_train, y_train);
+    model->init_als(loss, x_train, x_train_csr, y_train);
 
     for (size_t epoch = 0; epoch < _num_epochs; epoch++) {
         double start, finish;
@@ -92,12 +93,12 @@ void ALSOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_
 
         model->als_step(loss, x_train, y_train);
 
-        Y train_prediction = model->predict(x_train);
+        Y train_prediction = model->predict(x_train_csr);
         double train_mse = loss->compute_loss(train_prediction, y_train);
 
         double val_mse;
         if (use_validation) {
-            Y val_prediction = model->predict(x_val);
+            Y val_prediction = model->predict(x_val_csr);
             val_mse = loss->compute_loss(val_prediction, y_val);
         }
 
@@ -109,7 +110,6 @@ void ALSOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_
         std::cout << "\telapsed time: " << double(finish - start) / CLOCKS_PER_SEC << "." << std::endl;
         
     }
-    model->train(false, "als", x_train._objects.size());
 }
 
 
