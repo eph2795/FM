@@ -37,20 +37,15 @@ SGDOptimizer::SGDOptimizer(size_t num_epochs, double learning_rate)
 
 void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_train, 
         bool use_validation, const X& x_val, const Y& y_val) {
-    size_t N = x_train._objects.size();
-    // size_t f = model->_w.size();
 
+    size_t N = x_train._objects.size();
     std::vector<size_t> objects_order(N);
     std::iota(objects_order.begin(), objects_order.end(), 0);
 
     model->train(true, "sgd", x_train._objects.size());
-    // Object w_update;
     for (size_t epoch = 0; epoch < _num_epochs; epoch++) {
         std::random_shuffle(objects_order.begin(), objects_order.end());
 
-        // size_t batch_N = N / _batch_size + (N % _batch_size != 0);
-        // std::cout << "Data size: " << N << ", number of batches: " << batch_N << std::endl;
-        // size_t i = 0;
         double start, finish;
         start = clock();
 
@@ -61,23 +56,6 @@ void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_
             double coef = loss->compute_grad(prediction, y_train._targets[obj_idx]);
             SparseWeights* model_grad = model->compute_grad(x_train._objects[obj_idx], coef);
             model->update_weights(model_grad, -_learning_rate);
-            // std::cout << "Obj idx: " << obj_idx << std::endl;
-            // print_object(m_grad);
-            // w_update = update(w_update, m_grad, coef);
-            // std::cout << "Obj coef: " << coef << std::endl;
-            
-            // print_object(w_update);
-            // break;
-            // if (((i + 1) % _batch_size == 0) || (i == N - 1)) {
-            //     // print_object(w_update);
-            //     update(&(model->_w),  w_update, 1.0 / _batch_size);
-            //     w_update._features.resize(0);      
-            //     // print_vector(model->_w);
-            //     // std::cout << "\n\n\n\n\n";
-            //     // break;
-            // }
-            // // print_vector(model->_w);
-            // i += 1;
         }
         train_mse /= N;
         
@@ -93,8 +71,6 @@ void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_
             std::cout << "\tvalidation loss: " << val_mse << ",\n";
         }
         std::cout << "\telapsed time: " << double(finish - start) / CLOCKS_PER_SEC << "." << std::endl;
-        // break;
-        // print_vector(model->_w);
     }
     model->train(false, "sgd", x_train._objects.size());
 }
@@ -105,19 +81,16 @@ ALSOptimizer::ALSOptimizer(size_t num_epochs): _num_epochs(num_epochs) {}
 
 void ALSOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_train, 
         bool use_validation, const X& x_val, const Y& y_val) {
-    std::cout << "Setting train flag." << std::endl;
+
     model->train(true, "als", y_train._targets.size());
-    std::cout << "Start initializing model." << std::endl;
     model->init_als(loss, x_train, y_train);
 
-    std::cout << "Start to train model." << std::endl;
     for (size_t epoch = 0; epoch < _num_epochs; epoch++) {
         double start, finish;
 
         start = clock();
 
         model->als_step(loss, x_train, y_train);
-        std::cout << "Step " << epoch << " finished!" << std::endl;
 
         Y train_prediction = model->predict(x_train);
         double train_mse = loss->compute_loss(train_prediction, y_train);

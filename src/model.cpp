@@ -386,14 +386,12 @@ void FMModel::init_als(Loss* loss, const X& x, const Y& y) {
     double feature_value;
     for (size_t factor_idx = 0; factor_idx < _weights._factors_size; factor_idx++) {
         for (size_t object_idx = 0; object_idx < x_csr._objects_number; object_idx++) {
-            // std::cout << object_idx << " ";
             for (const auto& item: x_csr._objects[object_idx]._items) {
                 feature_idx = item.first;
                 feature_value = item.second;
                 _q[object_idx][factor_idx] += _weights._v[feature_idx][factor_idx] * feature_value;
             }
         }
-        // std::cout << _q[0][factor_idx] << std::endl;
     }
 }
 
