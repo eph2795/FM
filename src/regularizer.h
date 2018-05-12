@@ -6,7 +6,6 @@ struct Regularizer {
     virtual ~Regularizer() = 0;
     
     virtual double get_update(double weight) = 0;
-    void set_update();
     virtual double get_C() const = 0;
     virtual Regularizer* clone() const = 0;
 

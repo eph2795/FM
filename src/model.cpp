@@ -65,9 +65,6 @@ FMWeights::FMWeights(size_t features_number, size_t factors_size, Regularizer* r
             _v[i][j] = weights_sampler(generator);
         }
      }
-
-//     std::uniform_int_distribution<size_t> object_sampler(0, N);
-//     std::uniform_int_distribution<size_t> gradient_sampler(0, _update_frequency);
 }
 
 
@@ -331,14 +328,12 @@ inline SparseWeights* FMModel::compute_grad(const SparseVector& object, double c
     for (auto& feature: _grad->_w._items) {
         feature.second *= coef;
     }
-    // _grad->_v = std::unordered_map<size_t, std::vector<double>>();
+ 
     _grad->_v.resize(0);
     for (auto feature: object._items) {
-        // _grad->_v[feature.first] = std::vector<double>(_weights._factors_size);
         std::vector<double> new_grad(_weights._factors_size);
         for (size_t factor_num = 0; factor_num < _weights._factors_size; factor_num++) {
             double term = _precomputed_sp[factor_num];
-            // _grad->_v[feature.first][factor_num] = feature.second * (term - _weights._v[feature.first][factor_num] * feature.second);
             new_grad[factor_num] = coef * feature.second * (term - _weights._v[feature.first][factor_num] * feature.second);
         }
         _grad->_v.push_back(std::pair<size_t, std::vector<double>>(feature.first, new_grad));

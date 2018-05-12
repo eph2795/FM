@@ -16,7 +16,6 @@ inline double MSE::compute_loss(double prediction, double target) {
 double MSE::compute_loss(const Y& prediction, const Y& y) {
     double result = 0;
     for (size_t i = 0; i < prediction._targets.size(); i++) {
-        // std::cout << "Prediction: " << one._targets[i] << ", Target: " << another._targets[i] << std::endl; 
         result += compute_loss(prediction._targets[i], y._targets[i]);
     }
     result /= prediction._targets.size();
@@ -29,7 +28,6 @@ inline double MSE::compute_grad(double prediction, double target) {
 }
 
 
-// Поменять target на +- 1
 inline double Logistic::compute_loss(double prediction, double target) {
     target = 2 * target - 1;
     return 1 / std::log(2) * std::log(1 + std::exp(-target * prediction));
@@ -38,8 +36,7 @@ inline double Logistic::compute_loss(double prediction, double target) {
 
 double Logistic::compute_loss(const Y& prediction, const Y& y) {
     double result = 0;
-    for (size_t i = 0; i < prediction._targets.size(); i++) {
-        // std::cout << "Prediction: " << one._targets[i] << ", Target: " << another._targets[i] << std::endl; 
+    for (size_t i = 0; i < prediction._targets.size(); i++) { 
         result += compute_loss(prediction._targets[i], y._targets[i]);
     }
     result /= prediction._targets.size();
