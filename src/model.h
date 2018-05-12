@@ -75,6 +75,8 @@ struct Model {
     virtual void init_als(Loss* loss, const X& x, const X& x_csr, const Y& y) = 0;
     virtual void als_step(Loss* loss, const X& x, const Y& y) = 0;
     virtual Model* clone() const = 0;
+    virtual void dump(const std::string& file_name) const = 0;
+    virtual void load(const std::string& file_name) const = 0;
 };
 
 
@@ -84,21 +86,23 @@ struct LinearModel: Model {
 
     double predict(const SparseVector& object); 
     Y predict(const X& x);
+
     void train_sgd(bool state);
     Weights* get_weights();
     SparseWeights* compute_grad(const SparseVector& object, double coef);
     void update_weights(const SparseWeights* update, double coef);
+    
     void init_als(Loss* loss, const X& x, const X& x_csr, const Y& y);
     void als_step(Loss* loss, const X& x, const Y& y);
-    void _linear_als_update();
-    Model* clone() const;
+    
+    Model* clone() const;   
+    void dump(const std::string& file_name) const;
+    void load(const std::string& file_name) const;
 
     bool _state, _use_offset;
     LinearWeights _weights;
     LinearSparseWeights* _grad;
     std::vector<double> _e;
-    // std::vector<double> _x_squares;
-    // std::vector<double> _numerators;
 };
 
 
@@ -109,13 +113,18 @@ struct FMModel: Model {
     
     double predict(const SparseVector& object); 
     Y predict(const X& x);
+    
     void train_sgd(bool state);
     Weights* get_weights();
     SparseWeights* compute_grad(const SparseVector& object, double coef);
     void update_weights(const SparseWeights* update, double coef);
+    
     void init_als(Loss* loss, const X& x, const X& x_csr, const Y& y);
     void als_step(Loss* loss, const X& x, const Y& y);
+    
     Model* clone() const;
+    void dump(const std::string& file_name) const;
+    void load(const std::string& file_name) const;
 
     bool _state, _use_offset;
     FMWeights _weights;

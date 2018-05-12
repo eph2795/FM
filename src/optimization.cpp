@@ -79,10 +79,10 @@ void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_
 ALSOptimizer::ALSOptimizer(size_t num_epochs): _num_epochs(num_epochs) {}
 
 
-void ALSOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_train, 
-        bool use_validation, const X& x_val, const Y& y_val) {
-    X x_train_csr = x_train.to_csr();
-    X x_val_csr = x_val.to_csr();
+void ALSOptimizer::train(Model* model, Loss* loss, const X& x_train_csr, const Y& y_train, 
+        bool use_validation, const X& x_val_csr, const Y& y_val) {
+    X x_train = x_train_csr.to_csc();
+    X x_val = x_val_csr.to_csc();
 
     model->init_als(loss, x_train, x_train_csr, y_train);
 

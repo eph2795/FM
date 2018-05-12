@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <string.h>
 #include <string>
 #include <vector>
@@ -14,12 +15,14 @@
 void parse_arguments(int argc, char** argv, 
         std::string* train_file, std::string* test_file, std::string* model_type, std::string* loss_type, 
         size_t* factors_size, bool* use_offset, size_t* num_epochs, double* learning_rate, std::string* reg_type, double* C,
-        std::string* index_type, size_t* bits_number, std::string* validation_file, bool* use_validation, 
-        std::string* optimizer_type, size_t* update_frequency) {
+        std::string* index_type, size_t* bits_number, std::string* validation_file, 
+        std::string* optimizer_type, std::string* model_file, std::string* predict_file, 
+        bool* use_train, bool* use_validation, bool* use_test, bool* dump, bool* load, bool* predict) {
     for (size_t i = 1; i < static_cast<size_t>(argc); i++) {
         try {
             if (strcmp(argv[i], "--train") == 0) {
                 i += 1;
+                *use_train = true;
                 *train_file = std::string(argv[i]); 
             } else if (strcmp(argv[i], "--validation") == 0) {
                 i += 1;
@@ -27,10 +30,15 @@ void parse_arguments(int argc, char** argv,
                 *validation_file = std::string(argv[i]);
             } else if (strcmp(argv[i], "--test") == 0) {
                 i += 1;
+                *use_test = true;
                 *test_file = std::string(argv[i]);
             } else if (strcmp(argv[i], "--model") == 0) {
                 i += 1;
                 *model_type = std::string(argv[i]);
+            } else if (strcmp(argv[i], "--predict") == 0) {
+                i += 1;
+                *predict = true;
+                *predict_file = std::string(argv[i]);
             } else if (strcmp(argv[i], "--loss") == 0) {
                 i += 1;
                 *loss_type = std::string(argv[i]);
@@ -60,9 +68,14 @@ void parse_arguments(int argc, char** argv,
             } else if (strcmp(argv[i], "--optimizer") == 0) {
                 i += 1;
                 *optimizer_type = std::string(argv[i]);
-            } else if (strcmp(argv[i], "--update_frequency") == 0) {
+            } else if (strcmp(argv[i], "--dump") == 0) {
                 i += 1;
-                *update_frequency = std::stoul(argv[i]);
+                *dump = true;
+                *model_file = std::string(argv[i]);
+            } else if (strcmp(argv[i], "--load") == 0) {
+                i += 1;
+                *load = true;
+                *model_file = std::string(argv[i]);
             }
         } 
         catch (std::invalid_argument) {
@@ -84,6 +97,7 @@ Regularizer* create_regularizer(const std::string& reg_type, double C) {
         std::cout << "Wrong regularizer name! Terminated." << std::endl;
         throw;
     }
+    std::cout << std::endl;
     return regularizer;
 }
 
@@ -105,6 +119,7 @@ Model* create_model(const std::string& model_type, size_t features_number, size_
         std::cout << "Wrong model name! Terminated." << std::endl;
         throw;
     }
+    std::cout << std::endl;
     return model;
 }
 
@@ -121,6 +136,7 @@ Loss* create_loss(const std::string& loss_type) {
         std::cout << "Wrong loss name! Terminated." << std::endl;
         throw;
     }
+    std::cout << std::endl;
     return loss;
 }
 
@@ -137,11 +153,12 @@ DataReader* create_reader(const std::string& index_type, size_t bits_number) {
         std::cout << "Wrong index type! Terminated." << std::endl;
         throw;
     }
+    std::cout << std::endl;
     return data_reader;
 }
 
 
-Optimizer* create_optimizer(const std::string& optimizer_type, size_t num_epochs, double learning_rate, size_t update_frequency) {
+Optimizer* create_optimizer(const std::string& optimizer_type, size_t num_epochs, double learning_rate) {
     Optimizer* optimizer;
     if (strcmp(optimizer_type.c_str(), "sgd")  == 0) {
         std::cout << "Optimizer: SGD." << std::endl;
@@ -161,9 +178,9 @@ Optimizer* create_optimizer(const std::string& optimizer_type, size_t num_epochs
 
 
 int main(int argc, char** argv) {
-    std::string train_file("../../datasets/train_data.vw");  
-    std::string validation_file("../../dataset/test_data.vw");
-    std::string test_file("../../datasets/test_data.vw");  
+    std::string train_file, validation_file, test_file, model_file, predict_file;
+    bool use_train = false, use_validation = false, use_test = false, dump = false, load = false, predict=false;
+
     std::string model_type("linear");
     std::string loss_type("mse");
     std::string reg_type("l2");
@@ -175,88 +192,137 @@ int main(int argc, char** argv) {
     double learning_rate = 1e-3;
     double C=1e-3;
     size_t num_epochs = 10;
-    size_t update_frequency = 100000;
     bool use_offset = false;
-    bool use_validation = false;
+
     parse_arguments(argc, argv, &train_file, &test_file, &model_type, &loss_type, &factors_size, &use_offset, 
-        &num_epochs, &learning_rate, &reg_type, &C, &index_type, &bits_number, &validation_file, &use_validation,
-        &optimizer_type, &update_frequency);
+        &num_epochs, &learning_rate, &reg_type, &C, &index_type, &bits_number, &validation_file,
+        &optimizer_type, &model_file, &predict_file, &use_train, &use_validation, &use_test, &dump, &load, &predict);
+
+    if (use_train and load) {
+        std::cout << "Can't retrain loaded model! Terminated." << std::endl;
+        throw;
+    } else if (not use_train and not load) {
+        std::cout << "Specify train or load option! Terminated." << std::endl;
+        throw;
+    }
 
     clock_t start, finish;
 
-    std::cout << "Train data file: " << train_file << std::endl;
+    if (use_train) {
+        std::cout << "Train data file: " << train_file << std::endl;
+    }
     if (use_validation) {
         std::cout << "Validation data file: " << validation_file << std::endl;
     }
-    std::cout << "Test data file: " << test_file << std::endl;
-    std::cout << std::endl;
-
-    std::string data_type("csr");
-    if (strcmp(optimizer_type.c_str(), "als") == 0) {
-        data_type = std::string("csc"); 
+    if (use_test) {
+        std::cout << "Test data file: " << test_file << std::endl;
     }
+    std::cout << std::endl;
 
     DataReader* data_reader = create_reader(index_type, bits_number);
     if (strcmp(index_type.c_str(), "ohe") == 0) {
+        if (not use_train) {
+            std::cout << "You must use train file with ohe features! Terminated." << std::endl;
+            throw;
+        }
         std::cout << "Start to preprocessing train file..." << std::endl;
         start = clock();
         data_reader->get_columns_info(train_file);
         finish = clock();
         std::cout << "Train file preprocessed! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
+    
 
     X x_train, x_val, x_test;
     Y y_train, y_val, y_test;
-    std::cout << "Start to reading train data..." << std::endl;
-    start = clock();
-    data_reader->fill_with_data(train_file, &x_train, &y_train, data_type);
-    finish = clock();
-    std::cout << "Reading finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
+    if (use_train) {
+        std::cout << "Start to reading train data..." << std::endl;
+        start = clock();
+        data_reader->fill_with_data(train_file, &x_train, &y_train);
+        finish = clock();
+        std::cout << "Reading finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
+        std::cout << std::endl;
+    }
     if (use_validation) {
         std::cout << "Start to reading validation data..." << std::endl;
         start = clock();
-        data_reader->fill_with_data(validation_file, &x_val, &y_val, data_type);
+        data_reader->fill_with_data(validation_file, &x_val, &y_val);
         finish = clock();
         std::cout << "Reading finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
+        std::cout << std::endl;
     }
-    std::cout << std::endl;
+    
     
     Model* model = create_model(model_type, data_reader->get_features_number(), factors_size, use_offset, reg_type, C);
     Loss* loss = create_loss(loss_type);
-    Optimizer* optimizer = create_optimizer(optimizer_type, num_epochs, learning_rate, update_frequency);
-    std::cout << "Passes number: " << num_epochs << std::endl;
-    std::cout << "Learning rate: " << learning_rate << std::endl;
-    std::cout << std::endl;
-
-    std::cout << "Start to train model..." << std::endl;
-    start = clock();
-    optimizer->train(model, loss, x_train, y_train, use_validation, x_val, y_val);
-    Y train_prediction = model->predict(x_train);
-    double train_mse = loss->compute_loss(train_prediction, y_train); 
-    finish = clock();
-    std::cout << "Training finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
-    std::cout << "Loss: " << train_mse << std::endl;
-    std::cout << std::endl;
-
     
-    std::cout << "Start to reading test data..." << std::endl;
-    start = clock();
-    data_reader->fill_with_data(test_file, &x_test, &y_test, data_type);
-    finish = clock();
-    std::cout << "Reading finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
+    if (use_train) {
+        Optimizer* optimizer = create_optimizer(optimizer_type, num_epochs, learning_rate);
+        std::cout << "Passes number: " << num_epochs << std::endl;
+        std::cout << "Learning rate: " << learning_rate << std::endl;
+        std::cout << std::endl;
+
+        std::cout << "Start to train model..." << std::endl;
+        start = clock();
+        optimizer->train(model, loss, x_train, y_train, use_validation, x_val, y_val);
     
-    std::cout << "Start to predict on test data..." << std::endl;
-    start = clock();
-    Y test_prediction = model->predict(x_test);
-    double test_mse = loss->compute_loss(test_prediction, y_test);
-    finish = clock();
-    std::cout << "Prediction finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
-    std::cout << "Loss: " << test_mse << std::endl;
+        Y train_prediction = model->predict(x_train);
+        double train_mse = loss->compute_loss(train_prediction, y_train); 
+        finish = clock();
+        std::cout << "Training finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
+        std::cout << "Loss: " << train_mse << std::endl;
+        std::cout << std::endl;
+        delete optimizer;
+    } else if (load) {
+        std::cout << "Loading model, path: " << model_file << std::endl;
+        model->load(model_file);
+        std::cout << "Model loaded." << std::endl;
+        std::cout << std::endl;
+    } 
+    
+    if (dump) {
+        std::cout << "Start to dump model, path: " << model_file << std::endl;
+        model->dump(model_file);
+        std::cout << "Model dumped." << std::endl;
+        std::cout << std::endl;
+    }
+
+    if (use_test) {
+        std::cout << "Start to reading test data..." << std::endl;
+        start = clock();
+        data_reader->fill_with_data(test_file, &x_test, &y_test);
+        finish = clock();
+        std::cout << "Reading finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
+    
+        std::cout << "Start to predict on test data..." << std::endl;
+        start = clock();
+        Y test_prediction = model->predict(x_test);
+        double test_mse = loss->compute_loss(test_prediction, y_test);
+        finish = clock();
+        std::cout << "Prediction finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
+        std::cout << "Loss: " << test_mse << std::endl;
+
+        if (predict) {
+            std::cout << "Dumping prediction in file, path: " << predict_file << std::endl;
+            std::ofstream file;
+            file.open(predict_file.c_str(), std::ios::out | std::ios::binary);
+
+            if (file.is_open()) {
+                for (auto y: test_prediction._targets) {
+                    file << y << std::endl;
+                }
+                file.close();
+            } else {
+                std::cout << "Unable to open predict file! Terminated." << std::endl;
+                throw;
+            }
+        }
+        std::cout << std::endl;
+    }
 
     delete data_reader;
     delete model;
     delete loss;
-    delete optimizer;
     return 0;
 }

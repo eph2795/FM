@@ -15,7 +15,7 @@ X X::to_csr() const {
     x_csr._objects_number = _objects_number;
     x_csr._data_type = "csr";
 
-    x_csr._objects.resize(x_csr._objects_number);
+    x_csr._objects.resize(_objects_number);
     size_t object_idx;
     double feature_value;
 
@@ -27,6 +27,27 @@ X X::to_csr() const {
         }
     } 
     return x_csr;
+}
+
+
+X X::to_csc() const {
+    X x_csc;
+    x_csc._features_number = _features_number;
+    x_csc._objects_number = _objects_number;
+    x_csc._data_type = "csc";
+
+    x_csc._objects.resize(_features_number);
+    size_t feature_idx;
+    double feature_value;
+
+    for (size_t object_idx = 0; object_idx < _objects_number; object_idx++) {
+        for (const auto& item: _objects[object_idx]._items) {
+            feature_idx = item.first;
+            feature_value = item.second;
+            x_csc._objects[feature_idx]._items.push_back(std::pair<size_t, double>(object_idx, feature_value));
+        }
+    } 
+    return x_csc;
 }
 
 
@@ -53,7 +74,7 @@ double parse_double(const std::string& token) {
 DataReader::~DataReader() {}
 
 
-void DataReader::fill_with_data(const std::string& file_name, X* x, Y* y, const std::string& data_type) const {
+void DataReader::fill_with_data(const std::string& file_name, X* x, Y* y, const std::string& data_type) const  {
     if (strcmp(data_type.c_str(), "csr") == 0) {
         _fill_csr_data(file_name, x, y);
     } else if (strcmp(data_type.c_str(), "csc") == 0) {
@@ -68,7 +89,7 @@ void DataReader::fill_with_data(const std::string& file_name, X* x, Y* y, const 
 void DataReader::_fill_csr_data(const std::string& file_name, X* x, Y* y) const { 
     x->_data_type = std::string("csr");
     x->_features_number = get_features_number();
-
+    
     std::ifstream input(file_name.c_str());
     std::string line, token;
     for (size_t line_num = 0; std::getline(input, line); line_num++) {

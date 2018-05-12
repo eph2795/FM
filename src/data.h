@@ -15,7 +15,8 @@ struct SparseVector {
 
 struct X {
     X to_csr() const;
-    
+    X to_csc() const;
+
     std::vector<SparseVector> _objects;
     std::string _data_type;
     size_t _features_number;
@@ -34,7 +35,7 @@ struct DataReader {
     virtual void get_columns_info(const std::string& filename) = 0;
     virtual size_t get_features_number() const = 0;
     virtual size_t get_feature_index(const std::string& feature_name) const = 0;
-    void fill_with_data(const std::string& filename, X* x, Y* y, const std::string& data_type) const;
+    void fill_with_data(const std::string& filename, X* x, Y* y, const std::string& data_type=std::string("csr")) const;
     void _fill_csr_data(const std::string& filename, X* x, Y* y) const;
     void _fill_csc_data(const std::string& filename, X* x, Y* y) const;
 };

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <string.h>
 #include <cmath>
 #include <algorithm>
@@ -156,14 +157,6 @@ Weights* LinearModel::get_weights() {
 }
 
 
-Model* LinearModel::clone() const {
-    Regularizer* regularizer = _weights._regularizer->clone();
-    LinearModel* clone = new LinearModel(_weights._features_number, _use_offset, regularizer);
-    clone->_weights = _weights;
-    return clone;
-}
-
-
 inline SparseWeights* LinearModel::compute_grad(const SparseVector& object, double coef) {
     _grad->_w0 = coef;
     _grad->_w = object;
@@ -191,27 +184,25 @@ void LinearModel::init_als(Loss* loss, const X& x, const X& x_csr, const Y& y) {
 void LinearModel::als_step(Loss* loss, const X& x, const Y& y) {
     size_t M = x._features_number; // number of features
     size_t N = x._objects_number; // number of objects  
+    size_t object_idx;
+    double C = _weights._regularizer->get_C() * N;
+    double dw, numerator, squares, feature_value, e_sum = 0;
 
-    double e_sum = 0;
     for (size_t object_idx = 0; object_idx < N; object_idx++) {
         e_sum += _e[object_idx];
     }
 
-    double w_new = -(e_sum - N * _weights._w0) / (N + _weights._regularizer->get_C());
+    dw = -(e_sum - N * _weights._w0) / (N + C) - _weights._w0;
     for (size_t object_idx = 0; object_idx < N; object_idx++) {
-        _e[object_idx] += w_new - _weights._w0;
+        _e[object_idx] += dw;
     }
-    _weights._w0 = w_new;
+    _weights._w0 += dw;
 
 
     std::vector<size_t> features_order(M);
     std::iota(features_order.begin(), features_order.end(), 0);
     std::random_shuffle(features_order.begin(), features_order.end());
 
-    double numerator;
-    double squares;
-    size_t object_idx;
-    double feature_value; 
     for (size_t feature_idx: features_order) {
         numerator = 0;
         squares = 0;
@@ -221,19 +212,56 @@ void LinearModel::als_step(Loss* loss, const X& x, const Y& y) {
             numerator += feature_value * (_e[object_idx] - _weights._w[feature_idx] * feature_value);
             squares += std::pow(feature_value, 2);
         }
-        w_new = -numerator / (squares + _weights._regularizer->get_C());
+        dw = -numerator / (squares + C) - _weights._w[feature_idx];
         for (const auto& item: x._objects[feature_idx]._items) {
             object_idx = item.first;
             feature_value = item.second;
-            _e[object_idx] += (w_new - _weights._w[feature_idx]) * feature_value;
-            std::cout << _e[object_idx] << std::endl;
+            _e[object_idx] += dw * feature_value;
         }
-        _weights._w[feature_idx] = w_new;
+        _weights._w[feature_idx] += dw;
     }
 }
 
 
-void LinearModel::_linear_als_update() {
+Model* LinearModel::clone() const {
+    Regularizer* regularizer = _weights._regularizer->clone();
+    LinearModel* clone = new LinearModel(_weights._features_number, _use_offset, regularizer);
+    clone->_weights = _weights;
+    return clone;
+}
+
+
+void LinearModel::dump(const std::string& file_name) const {
+    std::ofstream file;
+    file.open(file_name.c_str(), std::ios::out | std::ios::binary);
+
+    if (file.is_open()) {
+        file.write((char*)&_use_offset, sizeof(bool));
+        file.write((char*)&_weights._features_number, sizeof(double));
+        file.write((char*)&_weights._w0, sizeof(double));
+        file.write((char*)_weights._w.data(), sizeof(double) * _weights._w.size());
+        file.close();
+    } else {
+        std::cout << "Unable to open model file! Terminated." << std::endl;
+        throw;
+    }
+}
+
+
+void LinearModel::load(const std::string& file_name) const {
+    std::ifstream file;
+    file.open(file_name.c_str(), std::ios::in | std::ios::binary);
+    
+    if (file.is_open()) {
+        file.read((char*)&_use_offset, sizeof(bool));
+        file.read((char*)&_weights._features_number, sizeof(double));
+        file.read((char*)&_weights._w0, sizeof(double));
+        file.read((char*)_weights._w.data(), sizeof(double) * _weights._features_number);
+        file.close();   
+    } else {
+        std::cout << "Unable to open model file! Terminated." << std::endl;
+        throw;
+    }
 }
 
 
@@ -251,7 +279,6 @@ FMModel::FMModel(size_t features_number, size_t factors_size, bool use_offset, R
 inline double FMModel::predict(const SparseVector& object) {
     double prediction = 0;
     if (_use_offset) {
-        // _weights._w0 += _regularizer(_weights._w0);
         prediction += _weights._w0;
     } 
     for (std::pair<size_t, double> feature: object._items) {
@@ -350,26 +377,25 @@ void FMModel::init_als(Loss* loss, const X& x, const X& x_csr, const Y& y) {
 
 void FMModel::als_step(Loss* loss, const X& x, const Y& y) {
     size_t M = x._features_number; // number of features
-    size_t N = x._objects_number; // number of objects  
+    size_t N = x._objects_number; // number of objects
+    size_t object_idx;  
+    double C = _weights._regularizer->get_C() * N;
+    double dw, numerator, squares, h, feature_value, e_sum = 0;
 
-    double e_sum = 0;
     for (size_t object_idx = 0; object_idx < N; object_idx++) {
         e_sum += _e[object_idx];
     }
 
-    double w_new = -(e_sum - N * _weights._w0) / (N + _weights._regularizer->get_C());
+    dw = -(e_sum - N * _weights._w0) / (N + C) - _weights._w0;
     for (size_t object_idx = 0; object_idx < N; object_idx++) {
-        _e[object_idx] += w_new - _weights._w0;
+        _e[object_idx] += dw;
     }
-    _weights._w0 = w_new;
-
+    _weights._w0 += dw;
 
     std::vector<size_t> features_order(M);
     std::iota(features_order.begin(), features_order.end(), 0);
     std::random_shuffle(features_order.begin(), features_order.end());
 
-    double numerator, squares, h, feature_value;
-    size_t object_idx;
     for (size_t feature_idx: features_order) {
         numerator = 0;
         squares = 0;
@@ -379,13 +405,13 @@ void FMModel::als_step(Loss* loss, const X& x, const Y& y) {
             numerator += feature_value * (_e[object_idx] - _weights._w[feature_idx] * feature_value);
             squares += std::pow(feature_value, 2);
         }
-        w_new = -numerator / (squares + _weights._regularizer->get_C());
+        dw = -numerator / (squares + C) - _weights._w[feature_idx];
         for (const auto& item: x._objects[feature_idx]._items) {
             object_idx = item.first;
             feature_value = item.second;
-            _e[object_idx] += (w_new - _weights._w[feature_idx]) * feature_value;
+            _e[object_idx] += dw * feature_value;
         }
-        _weights._w[feature_idx] = w_new;
+        _weights._w[feature_idx] += dw;
     }
 
     std::random_shuffle(features_order.begin(), features_order.end());
@@ -403,16 +429,16 @@ void FMModel::als_step(Loss* loss, const X& x, const Y& y) {
                 squares += std::pow(h, 2);
             }
             
-            w_new = -numerator / (squares + _weights._regularizer->get_C());
+            dw = -numerator / (squares + C) - _weights._v[feature_idx][factor_idx];
             for (const auto& item: x._objects[feature_idx]._items) {
                 object_idx = item.first;
                 feature_value = item.second;
                 
                 h = feature_value * (_q[object_idx][factor_idx] - _weights._v[feature_idx][factor_idx] * feature_value);
-                _e[object_idx] += (w_new - _weights._v[feature_idx][factor_idx]) * h;
-                _q[object_idx][factor_idx] += (w_new - _weights._v[feature_idx][factor_idx]) * feature_value;
+                _e[object_idx] += dw * h;
+                _q[object_idx][factor_idx] += dw * feature_value;
             }
-            _weights._v[feature_idx][factor_idx] = w_new;
+            _weights._v[feature_idx][factor_idx] += dw;
         }
     }
 }
@@ -423,4 +449,46 @@ Model* FMModel::clone() const {
     FMModel* clone = new FMModel(_weights._features_number, _weights._factors_size, _use_offset, regularizer);
     clone->_weights = _weights;
     return clone;  
+}
+
+
+void FMModel::dump(const std::string& file_name) const {
+    std::ofstream file;
+    file.open(file_name.c_str(), std::ios::out | std::ios::binary);
+
+    if (file.is_open()) {
+        file.write((char*)&_use_offset, sizeof(bool));
+        file.write((char*)&_weights._features_number, sizeof(double));
+        file.write((char*)&_weights._factors_size, sizeof(double));
+        file.write((char*)&_weights._w0, sizeof(double));
+        file.write((char*)_weights._w.data(), sizeof(double) * _weights._w.size());
+        for (const auto& v: _weights._v) {
+            file.write((char*)v.data(), sizeof(double) * v.size());
+        }
+        file.close();
+    } else {
+        std::cout << "Unable to open model file! Terminated." << std::endl;
+        throw;
+    }
+}
+
+
+void FMModel::load(const std::string& file_name) const {
+    std::ifstream file;
+    file.open(file_name.c_str(), std::ios::in | std::ios::binary);
+    
+    if (file.is_open()) {
+        file.read((char*)&_use_offset, sizeof(bool));
+        file.read((char*)&_weights._features_number, sizeof(double));
+        file.read((char*)&_weights._factors_size, sizeof(double));
+        file.read((char*)&_weights._w0, sizeof(double));
+        file.read((char*)_weights._w.data(), sizeof(double) * _weights._features_number);
+        for (auto& v: _weights._v) {
+            file.read((char*)v.data(), sizeof(double) * _weights._factors_size);
+        }
+        file.close();   
+    } else {
+        std::cout << "Unable to open model file! Terminated." << std::endl;
+        throw;
+    }
 }
