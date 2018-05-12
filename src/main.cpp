@@ -15,7 +15,7 @@ void parse_arguments(int argc, char** argv,
         std::string* train_file, std::string* test_file, std::string* model_type, std::string* loss_type, 
         size_t* factors_size, bool* use_offset, size_t* num_epochs, double* learning_rate, std::string* reg_type, double* C,
         std::string* index_type, size_t* bits_number, std::string* validation_file, bool* use_validation, 
-        std::string* optimizer_type) {
+        std::string* optimizer_type, size_t* update_frequency) {
     for (size_t i = 1; i < static_cast<size_t>(argc); i++) {
         try {
             if (strcmp(argv[i], "--train") == 0) {
@@ -60,6 +60,9 @@ void parse_arguments(int argc, char** argv,
             } else if (strcmp(argv[i], "--optimizer") == 0) {
                 i += 1;
                 *optimizer_type = std::string(argv[i]);
+            } else if (strcmp(argv[i], "--update_frequency") == 0) {
+                i += 1;
+                *update_frequency = std::stoul(argv[i]);
             }
         } 
         catch (std::invalid_argument) {
@@ -138,11 +141,17 @@ DataReader* create_reader(const std::string& index_type, size_t bits_number) {
 }
 
 
-Optimizer* create_optimizer(const std::string& optimizer_type, size_t num_epochs, double learning_rate) {
+Optimizer* create_optimizer(const std::string& optimizer_type, size_t num_epochs, double learning_rate, size_t update_frequency) {
     Optimizer* optimizer;
     if (strcmp(optimizer_type.c_str(), "sgd")  == 0) {
         std::cout << "Optimizer: SGD." << std::endl;
         optimizer = new SGDOptimizer(num_epochs, learning_rate);
+    // } else if (strcmp(optimizer_type.c_str(), "als") == 0) {
+    //     std::cout << "Optimizer: ALS, update frequency=" << update_frequency << "." << std::endl;
+    //     optimizer = new SVRGOptimizer(num_epochs, learning_rate, update_frequency);
+    } else if (strcmp(optimizer_type.c_str(), "als") == 0) {
+        std::cout << "Optimizer: ALS." << std::endl;
+        optimizer = new ALSOptimizer(num_epochs);
     } else {
         std::cout << "Wrong optimizer type! Terminated." << std::endl;
         throw;
@@ -166,11 +175,12 @@ int main(int argc, char** argv) {
     double learning_rate = 1e-3;
     double C=1e-3;
     size_t num_epochs = 10;
+    size_t update_frequency = 100000;
     bool use_offset = false;
     bool use_validation = false;
     parse_arguments(argc, argv, &train_file, &test_file, &model_type, &loss_type, &factors_size, &use_offset, 
         &num_epochs, &learning_rate, &reg_type, &C, &index_type, &bits_number, &validation_file, &use_validation,
-        &optimizer_type);
+        &optimizer_type, &update_frequency);
 
     clock_t start, finish;
 
@@ -180,6 +190,11 @@ int main(int argc, char** argv) {
     }
     std::cout << "Test data file: " << test_file << std::endl;
     std::cout << std::endl;
+
+    std::string data_type("csr");
+    if (strcmp(optimizer_type.c_str(), "als") == 0) {
+        data_type = std::string("csc"); 
+    }
 
     DataReader* data_reader = create_reader(index_type, bits_number);
     if (strcmp(index_type.c_str(), "ohe") == 0) {
@@ -195,22 +210,21 @@ int main(int argc, char** argv) {
     Y y_train, y_val, y_test;
     std::cout << "Start to reading train data..." << std::endl;
     start = clock();
-    data_reader->fill_with_data(train_file, &x_train, &y_train);
+    data_reader->fill_with_data(train_file, &x_train, &y_train, data_type);
     finish = clock();
     std::cout << "Reading finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
     if (use_validation) {
         std::cout << "Start to reading validation data..." << std::endl;
         start = clock();
-        data_reader->fill_with_data(validation_file, &x_val, &y_val);
+        data_reader->fill_with_data(validation_file, &x_val, &y_val, data_type);
         finish = clock();
         std::cout << "Reading finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
     }
     std::cout << std::endl;
-
-    // std::cout << data_reader->_features_number << std::endl;
+    
     Model* model = create_model(model_type, data_reader->get_features_number(), factors_size, use_offset, reg_type, C);
     Loss* loss = create_loss(loss_type);
-    Optimizer* optimizer = create_optimizer(optimizer_type, num_epochs, learning_rate);
+    Optimizer* optimizer = create_optimizer(optimizer_type, num_epochs, learning_rate, update_frequency);
     std::cout << "Passes number: " << num_epochs << std::endl;
     std::cout << "Learning rate: " << learning_rate << std::endl;
     std::cout << std::endl;
@@ -228,19 +242,12 @@ int main(int argc, char** argv) {
     
     std::cout << "Start to reading test data..." << std::endl;
     start = clock();
-    data_reader->fill_with_data(test_file, &x_test, &y_test);
+    data_reader->fill_with_data(test_file, &x_test, &y_test, data_type);
     finish = clock();
     std::cout << "Reading finished! Elapsed time: " << double(finish - start) / CLOCKS_PER_SEC << std::endl;
     
     std::cout << "Start to predict on test data..." << std::endl;
     start = clock();
-    // for (size_t i = 0; i < x_test._objects.size(); i++) {
-    //     for (size_t j = 0; j < x_test._objects[i]._features.size(); j++) {
-    //         std::cout << "Idx: " << x_test._objects[i]._features[j].idx << ", value: " << x_test._objects[i]._features[j].value << "\t";
-    //     }
-    //     std::cout << "\t target: "  << y_test._targets[i] << std::endl;
-    // }
-    // print_vector(model._w);
     Y test_prediction = model->predict(x_test);
     double test_mse = loss->compute_loss(test_prediction, y_test);
     finish = clock();
