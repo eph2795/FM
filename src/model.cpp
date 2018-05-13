@@ -159,15 +159,14 @@ inline void LinearModel::update_weights(const SparseWeights* update, double coef
 
 
 inline void LinearModel::update_reg(const SparseVector& object, const SparseWeights* update, double coef) {
-    _weights._C0 = std::max(0.0, _weights._C0 + coef * (-2 * _weights._w0));
+    _weights._C0 = std::max(0.0, _weights._C0 - 2 * coef * _weights._w0);
 
-    auto obj_iter = object._items.begin();
     double Cw = 0;
-    for (size_t dense_idx = 0; obj_iter != object._items.end(); dense_idx = obj_iter->first) {
-        Cw += -2 * _weights._w[dense_idx] * obj_iter->second;
-        obj_iter++;
+    for (const auto& item: object._items) {
+        Cw += _weights._w[item.first] * item.second;
     }
-    _weights._Cw = std::max(0.0, _weights._Cw + coef * Cw);
+
+    _weights._Cw = std::max(0.0, _weights._Cw - 2 * coef * Cw);
 }
 
 
@@ -358,34 +357,38 @@ inline void FMModel::update_weights(const SparseWeights* update, double coef) {
 
 
 void FMModel::update_reg(const SparseVector& object, const SparseWeights* update, double coef) {
-    // const FMSparseWeights* fm_update = dynamic_cast<const FMSparseWeights*>(update);
-    // _weights._C0 = std::max(0.0, _weights._C0 + coef * (-2 * _weights._w0));
+    const FMSparseWeights* fm_update = dynamic_cast<const FMSparseWeights*>(update);
+    _weights._C0 = std::max(0.0, _weights._C0 - 2 * coef * _weights._w0);
 
-    // auto obj_iter = object._items.begin();
-    // double Cw = 0;
-    // for (size_t dense_idx = 0; obj_iter != object._items.end(); dense_idx = obj_iter->first) {
-    //     Cw += -2 * _weights._w[dense_idx] * obj_iter->second;
-    //     obj_iter++;
-    // }
-    // _weights._Cw = std::max(0.0, _weights._Cw + coef * Cw);
+    double Cw = 0;
+    for (const auto& item: object._items) {
+        Cw += _weights._w[item.first] * item.second;
+    }
+    _weights._Cw = std::max(0.0, _weights._Cw - 2 * coef * Cw);
 
-    // auto obj_iter = object._items.begin();
-    // auto upd_iter = fm_update->_w._items.begin();
-    // std::vector<double> Cv(_weights._factors_size, 0);
-    // for (size_t factor_idx = 0; factor_idx < _weights._factors_size; factor_idx++) {
-    //     for (size_t dense_idx = 0; (obj_iter != object._items.end()) and (upd_iter != fm_update->_w._items.end()); dense_idx = obj_iter->first) {
-    //         if (obj_iter->first < upd_iter->first) {
-    //             obj_iter++;
-    //         } else if (obj_iter->first < upd_iter->first) {
-    //             upd_iter++;
-    //         } else {
-    //             Cw += -2 * _weights._w[dense_idx] * obj_iter->second;
-    //             obj_iter++;
-    //             upd_iter++;
-    //         }
-    //     }
-    //     _weights._Cw = std::max(0.0, _weights._Cw + coef * Cw);
-    // }   
+    std::vector<double> Cv(_weights._factors_size, 0);
+    for (size_t factor_idx = 0; factor_idx < _weights._factors_size; factor_idx++) {
+        double cur_term, next_term;
+        double xv_cur = 0, xv_next = 0, xv_quad = 0;
+        auto obj_iter = object._items.begin();
+        auto upd_iter = fm_update->_v.begin();
+        for (; (obj_iter != object._items.end()) and (upd_iter != fm_update->_v.end()); ) {
+            if (obj_iter->first > upd_iter->first) {
+                upd_iter++;
+            } else {            
+                cur_term = _weights._v[obj_iter->first][factor_idx] * obj_iter->second;
+                xv_cur += cur_term;
+                if (obj_iter->first == upd_iter->first) {
+                    next_term = (_weights._v[obj_iter->first][factor_idx] + upd_iter->second[factor_idx]) * obj_iter->second;
+                    xv_next += next_term;
+                    xv_quad += cur_term * next_term;
+                    upd_iter++;
+                }
+                obj_iter++;  
+            } 
+        }
+        _weights._Cv[factor_idx] = std::max(0.0, _weights._Cv[factor_idx] - 2 * coef * (xv_cur * xv_next - xv_quad));
+    }   
 }
 
 
@@ -416,9 +419,9 @@ void FMModel::als_step(Loss* loss, const X& x, const Y& y) {
     size_t N = x._objects_number; // number of objects
     size_t object_idx;  
     double C0 = _weights._C0 * N, Cw = _weights._Cw * N;
-    std::vector<double> Cv(_weights._Cv);
-    for (auto& item: Cv) {
-        item *= N;
+    std::vector<double> Cv = _weights._Cv;
+    for (size_t factor_idx = 0; factor_idx < Cv.size(); factor_idx++) {
+        Cv[factor_idx] *= N;
     }    
     double dw, numerator, squares, h, feature_value, e_sum = 0;
 
@@ -469,7 +472,7 @@ void FMModel::als_step(Loss* loss, const X& x, const Y& y) {
                 squares += std::pow(h, 2);
             }
             
-            dw = -numerator / (squares + Cv[feature_idx]) - _weights._v[feature_idx][factor_idx];
+            dw = -numerator / (squares + Cv[factor_idx]) - _weights._v[feature_idx][factor_idx];
             for (const auto& item: x._objects[feature_idx]._items) {
                 object_idx = item.first;
                 feature_value = item.second;
