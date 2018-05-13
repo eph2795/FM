@@ -55,7 +55,7 @@ inline void LinearWeights::update_weights(const SparseWeights* update, double co
 
 
 FMWeights::FMWeights(size_t features_number, size_t factors_size, 
-                     double C0, double Cw, double Cv, Regularizer* regularizer)
+                     double C0, double Cw, const std::vector<double>& Cv, Regularizer* regularizer)
         : _features_number(features_number), _factors_size(factors_size), _w0(0)
         , _w(features_number, 0), _v(features_number, std::vector<double>(factors_size))
         , _C0(C0), _Cw(Cw), _Cv(Cv), _regularizer(regularizer)
@@ -82,8 +82,9 @@ inline void FMWeights::update_weights(const SparseWeights* update, double coef) 
         _w[item.first] += coef * (item.second + _Cw * _regularizer->get_update(_w[item.first]));
     }
     for (std::pair<size_t, std::vector<double>> factors: fm_update->_v) {
-        for (size_t factor_num = 0; factor_num < _factors_size; factor_num++) {
-            _v[factors.first][factor_num] += coef * (factors.second[factor_num] + _Cv * _regularizer->get_update(_v[factors.first][factor_num]));
+        for (size_t factor_idx = 0; factor_idx < _factors_size; factor_idx++) {
+            _v[factors.first][factor_idx] += coef * (factors.second[factor_idx] 
+                + _Cv[factor_idx] * _regularizer->get_update(_v[factors.first][factor_idx]));
         }
     }
 }
@@ -93,8 +94,8 @@ Model::~Model() {}
 
 
 LinearModel::LinearModel(size_t features_number, bool use_offset, 
-                         double C0, double Cv, Regularizer* regularizer)
-        : _state(false), _use_offset(use_offset), _weights(features_number, C0, Cv, regularizer), _e(0)
+                         double C0, double Cw, Regularizer* regularizer)
+        : _state(false), _use_offset(use_offset), _weights(features_number, C0, Cw, regularizer), _e(0)
 {}
 
 
@@ -154,6 +155,19 @@ inline SparseWeights* LinearModel::compute_grad(const SparseVector& object, doub
 inline void LinearModel::update_weights(const SparseWeights* update, double coef) {
     const LinearSparseWeights* linear_update = dynamic_cast<const LinearSparseWeights*>(update);
     _weights.update_weights(linear_update, coef);
+}
+
+
+inline void LinearModel::update_reg(const SparseVector& object, const SparseWeights* update, double coef) {
+    _weights._C0 = std::max(0.0, _weights._C0 + coef * (-2 * _weights._w0));
+
+    auto obj_iter = object._items.begin();
+    double Cw = 0;
+    for (size_t dense_idx = 0; obj_iter != object._items.end(); dense_idx = obj_iter->first) {
+        Cw += -2 * _weights._w[dense_idx] * obj_iter->second;
+        obj_iter++;
+    }
+    _weights._Cw = std::max(0.0, _weights._Cw + coef * Cw);
 }
 
 
@@ -256,7 +270,7 @@ void LinearModel::load(const std::string& file_name) const {
 
 
 FMModel::FMModel(size_t features_number, size_t factors_size, bool use_offset, 
-                 double C0, double Cw, double Cv, Regularizer* regularizer)
+                 double C0, double Cw, const std::vector<double>& Cv, Regularizer* regularizer)
         : _state(false), _use_offset(use_offset)
         , _weights(features_number, factors_size, C0, Cw, Cv, regularizer)
         , _precomputed_sp(factors_size), _e(0), _q(0, std::vector<double>(0))
@@ -343,6 +357,38 @@ inline void FMModel::update_weights(const SparseWeights* update, double coef) {
 }
 
 
+void FMModel::update_reg(const SparseVector& object, const SparseWeights* update, double coef) {
+    // const FMSparseWeights* fm_update = dynamic_cast<const FMSparseWeights*>(update);
+    // _weights._C0 = std::max(0.0, _weights._C0 + coef * (-2 * _weights._w0));
+
+    // auto obj_iter = object._items.begin();
+    // double Cw = 0;
+    // for (size_t dense_idx = 0; obj_iter != object._items.end(); dense_idx = obj_iter->first) {
+    //     Cw += -2 * _weights._w[dense_idx] * obj_iter->second;
+    //     obj_iter++;
+    // }
+    // _weights._Cw = std::max(0.0, _weights._Cw + coef * Cw);
+
+    // auto obj_iter = object._items.begin();
+    // auto upd_iter = fm_update->_w._items.begin();
+    // std::vector<double> Cv(_weights._factors_size, 0);
+    // for (size_t factor_idx = 0; factor_idx < _weights._factors_size; factor_idx++) {
+    //     for (size_t dense_idx = 0; (obj_iter != object._items.end()) and (upd_iter != fm_update->_w._items.end()); dense_idx = obj_iter->first) {
+    //         if (obj_iter->first < upd_iter->first) {
+    //             obj_iter++;
+    //         } else if (obj_iter->first < upd_iter->first) {
+    //             upd_iter++;
+    //         } else {
+    //             Cw += -2 * _weights._w[dense_idx] * obj_iter->second;
+    //             obj_iter++;
+    //             upd_iter++;
+    //         }
+    //     }
+    //     _weights._Cw = std::max(0.0, _weights._Cw + coef * Cw);
+    // }   
+}
+
+
 void FMModel::init_als(Loss* loss, const X& x, const X& x_csr, const Y& y) {
     _e.resize(x._objects_number);
     _q.resize(x._objects_number, std::vector<double>(_weights._factors_size, 0));
@@ -369,7 +415,11 @@ void FMModel::als_step(Loss* loss, const X& x, const Y& y) {
     size_t M = x._features_number; // number of features
     size_t N = x._objects_number; // number of objects
     size_t object_idx;  
-    double C0 = _weights._C0 * N, Cw = _weights._Cw * N, Cv = _weights._Cv * N;
+    double C0 = _weights._C0 * N, Cw = _weights._Cw * N;
+    std::vector<double> Cv(_weights._Cv);
+    for (auto& item: Cv) {
+        item *= N;
+    }    
     double dw, numerator, squares, h, feature_value, e_sum = 0;
 
     for (size_t object_idx = 0; object_idx < N; object_idx++) {
@@ -419,7 +469,7 @@ void FMModel::als_step(Loss* loss, const X& x, const Y& y) {
                 squares += std::pow(h, 2);
             }
             
-            dw = -numerator / (squares + Cv) - _weights._v[feature_idx][factor_idx];
+            dw = -numerator / (squares + Cv[feature_idx]) - _weights._v[feature_idx][factor_idx];
             for (const auto& item: x._objects[feature_idx]._items) {
                 object_idx = item.first;
                 feature_value = item.second;
@@ -455,7 +505,7 @@ void FMModel::dump(const std::string& file_name) const {
         file.write((char*)_weights._w.data(), sizeof(double) * _weights._w.size());
         file.write((char*)&_weights._C0, sizeof(double));
         file.write((char*)&_weights._Cw, sizeof(double));
-        file.write((char*)&_weights._Cv, sizeof(double));
+        file.write((char*)_weights._Cv.data(), sizeof(double) * _weights._Cv.size());
         file.write((char*)_weights._regularizer, sizeof(Regularizer));
         for (const auto& v: _weights._v) {
             file.write((char*)v.data(), sizeof(double) * v.size());
@@ -480,7 +530,7 @@ void FMModel::load(const std::string& file_name) const {
         file.read((char*)_weights._w.data(), sizeof(double) * _weights._features_number);
         file.read((char*)&_weights._C0, sizeof(double));
         file.read((char*)&_weights._Cw, sizeof(double));
-        file.read((char*)&_weights._Cv, sizeof(double));
+        file.read((char*)_weights._Cv.data(), sizeof(double) * _weights._Cv.size());
         file.read((char*)_weights._regularizer, sizeof(Regularizer));
         for (auto& v: _weights._v) {
             file.read((char*)v.data(), sizeof(double) * _weights._factors_size);

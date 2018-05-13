@@ -15,7 +15,7 @@
 void parse_arguments(int argc, char** argv, 
         std::string* train_file, std::string* test_file, std::string* model_type, std::string* loss_type, 
         size_t* factors_size, bool* use_offset, size_t* num_epochs, double* learning_rate,
-        std::string* reg_type, double* C, bool* use_common, double* C0, double* Cv, double* Cw, 
+        std::string* reg_type, double* C, bool* use_common, double* C0, double* Cv, double* Cw, bool* adaptive_reg,
         std::string* index_type, size_t* bits_number, std::string* validation_file, 
         std::string* optimizer_type, std::string* model_file, std::string* predict_file, 
         bool* use_train, bool* use_validation, bool* use_test, bool* dump, bool* load, bool* predict) {
@@ -61,15 +61,17 @@ void parse_arguments(int argc, char** argv,
                 i += 1;
                 *use_common = true;
                 *C = std::stod(argv[i]);
-            } if (strcmp(argv[i], "-C0") == 0) {
+            } else if (strcmp(argv[i], "-C0") == 0) {
                 i += 1;
                 *C0 = std::stod(argv[i]);
-            } if (strcmp(argv[i], "-Cw") == 0) {
+            } else if (strcmp(argv[i], "-Cw") == 0) {
                 i += 1;
                 *Cw = std::stod(argv[i]);
-            } if (strcmp(argv[i], "-Cv") == 0) {
+            } else if (strcmp(argv[i], "-Cv") == 0) {
                 i += 1;
                 *Cv = std::stod(argv[i]);
+            } else if (strcmp(argv[i], "--adaptive_reg") == 0) {
+                *adaptive_reg = true;
             } else if (strcmp(argv[i], "--index_type") == 0) {
                 i += 1;
                 *index_type = std::string(argv[i]);
@@ -129,7 +131,7 @@ Model* create_model(const std::string& model_type, size_t features_number, size_
     } else if (strcmp(model_type.c_str(), "fm") == 0) {
         std::cout << "Model: FM, " << " factors size=" << factors_size << "." << std::endl;
         std::cout << "\tC0=" << C0 << ", Cw=" << Cw << ", Cv=" << Cv << "." << std::endl;
-        model = new FMModel(features_number, factors_size, use_offset, C0, Cw, Cv, regularizer);
+        model = new FMModel(features_number, factors_size, use_offset, C0, Cw, std::vector<double>(factors_size, Cv), regularizer);
     } else {
         std::cout << "Wrong model name! Terminated." << std::endl;
         throw;
@@ -207,10 +209,12 @@ int main(int argc, char** argv) {
     double learning_rate = 1e-3;
     double C = 1e-3, C0 = 1, Cw = 1e-6, Cv = 1e-3;
     size_t num_epochs = 10;
-    bool use_offset = false, use_common = false;
+    bool use_offset = false, use_common = false, adaptive_reg = false;
 
     parse_arguments(argc, argv, &train_file, &test_file, &model_type, &loss_type, &factors_size, &use_offset, 
-        &num_epochs, &learning_rate, &reg_type, &C, &use_common, &C0, &Cw, &Cv, &index_type, &bits_number, &validation_file,
+        &num_epochs, &learning_rate, 
+        &reg_type, &C, &use_common, &C0, &Cw, &Cv, &adaptive_reg,
+        &index_type, &bits_number, &validation_file,
         &optimizer_type, &model_file, &predict_file, &use_train, &use_validation, &use_test, &dump, &load, &predict);
     if (use_common) {
         C0 = C;
@@ -222,6 +226,9 @@ int main(int argc, char** argv) {
         throw;
     } else if (not use_train and not load) {
         std::cout << "Specify train or load option! Terminated." << std::endl;
+        throw;
+    } else if (adaptive_reg and not use_validation) {
+        std::cout << "Can't use adaptive regularization without validation set! Terminated." << std::endl;
         throw;
     }
 
@@ -281,7 +288,7 @@ int main(int argc, char** argv) {
 
         std::cout << "Start to train model..." << std::endl;
         start = clock();
-        optimizer->train(model, loss, x_train, y_train, use_validation, x_val, y_val);
+        optimizer->train(model, loss, x_train, y_train, use_validation, x_val, y_val, adaptive_reg);
     
         Y train_prediction = model->predict(x_train);
         double train_mse = loss->compute_loss(train_prediction, y_train); 

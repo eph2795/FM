@@ -38,11 +38,18 @@ SGDOptimizer::SGDOptimizer(size_t num_epochs, double learning_rate)
 
 
 void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_train, 
-        bool use_validation, const X& x_val, const Y& y_val) {
+        bool use_validation, const X& x_val, const Y& y_val, bool adaptive_reg) {
 
     size_t N = x_train._objects.size();
     std::vector<size_t> objects_order(N);
     std::iota(objects_order.begin(), objects_order.end(), 0);
+
+    std::default_random_engine generator;
+    size_t val_size = 0;
+    if (use_validation and adaptive_reg) {
+        val_size = x_val._objects_number;
+    }
+    std::uniform_int_distribution<size_t> val_sampler(0, val_size);
 
     model->train_sgd(true);
     for (size_t epoch = 0; epoch < _num_epochs; epoch++) {
@@ -61,6 +68,12 @@ void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_
             train_mse += loss->compute_loss(prediction, y_train._targets[obj_idx]);
             coef = loss->compute_grad(prediction, y_train._targets[obj_idx]);
             SparseWeights* model_grad = model->compute_grad(x_train._objects[obj_idx], coef);
+
+            if (use_validation and adaptive_reg) {
+                size_t sampled_idx = val_sampler(generator);
+                model->update_reg(x_train._objects[sampled_idx], model_grad, -std::pow(_learning_rate, 2) * coef);
+            }
+
             model->update_weights(model_grad, -_learning_rate);
         }
         train_mse /= N;
@@ -76,6 +89,10 @@ void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_
         if (use_validation) {
             std::cout << "\tvalidation loss: " << val_mse << ",\n";
         }
+        // if (adaptive_reg) {
+        //     const LinearModel* linear_model = dynamic_cast<const LinearModel*>(model);
+        //     std::cout << "\tC0: " << linear_model->_weights._C0 << ", Cw: " << linear_model->_weights._Cw << ",\n";
+        // }
         std::cout << "\telapsed time: " << double(finish - start) / CLOCKS_PER_SEC << "." << std::endl;
     }
     model->train_sgd(false);
@@ -86,7 +103,7 @@ ALSOptimizer::ALSOptimizer(size_t num_epochs): _num_epochs(num_epochs) {}
 
 
 void ALSOptimizer::train(Model* model, Loss* loss, const X& x_train_csr, const Y& y_train, 
-        bool use_validation, const X& x_val_csr, const Y& y_val) {
+        bool use_validation, const X& x_val_csr, const Y& y_val, bool adaptive_reg) {
     X x_train = x_train_csr.to_csc();
     X x_val = x_val_csr.to_csc();
 

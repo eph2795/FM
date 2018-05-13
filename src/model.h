@@ -51,7 +51,7 @@ struct LinearWeights: Weights {
 
 
 struct FMWeights: Weights {
-    FMWeights(size_t features_number, size_t factors_size, double C0, double Cw, double Cv, Regularizer* regularizer);
+    FMWeights(size_t features_number, size_t factors_size, double C0, double Cw, const std::vector<double>& Cv, Regularizer* regularizer);
     ~FMWeights();
 
     void update_weights(const SparseWeights* update, double coef);
@@ -60,7 +60,8 @@ struct FMWeights: Weights {
     double _w0;
     std::vector<double> _w;
     std::vector<std::vector<double>> _v;
-    double _C0, _Cw, _Cv;
+    double _C0, _Cw;
+    std::vector<double> _Cv;
     Regularizer* _regularizer;
 };
 
@@ -70,12 +71,16 @@ struct Model {
 
     virtual double predict(const SparseVector& object) = 0;
     virtual Y predict(const X& x) = 0;
+    
     virtual void train_sgd(bool state) = 0;
     virtual Weights* get_weights() = 0;
     virtual SparseWeights* compute_grad(const SparseVector& object, double coef) = 0;
     virtual void update_weights(const SparseWeights* update, double coef) = 0;
+    virtual void update_reg(const SparseVector& object, const SparseWeights* update, double coef) = 0;
+
     virtual void init_als(Loss* loss, const X& x, const X& x_csr, const Y& y) = 0;
     virtual void als_step(Loss* loss, const X& x, const Y& y) = 0;
+    
     virtual Model* clone() const = 0;
     virtual void dump(const std::string& file_name) const = 0;
     virtual void load(const std::string& file_name) const = 0;
@@ -93,7 +98,8 @@ struct LinearModel: Model {
     Weights* get_weights();
     SparseWeights* compute_grad(const SparseVector& object, double coef);
     void update_weights(const SparseWeights* update, double coef);
-    
+    void update_reg(const SparseVector& object, const SparseWeights* update, double coef);
+
     void init_als(Loss* loss, const X& x, const X& x_csr, const Y& y);
     void als_step(Loss* loss, const X& x, const Y& y);
     
@@ -111,7 +117,7 @@ struct LinearModel: Model {
 
 struct FMModel: Model {
     FMModel(size_t features_number, size_t factors_size, bool use_offset, 
-            double C0, double Cw, double Cv, Regularizer* regularizer);
+            double C0, double Cw, const std::vector<double>& Cv, Regularizer* regularizer);
     // ~FMModel();
     
     double predict(const SparseVector& object); 
@@ -121,7 +127,8 @@ struct FMModel: Model {
     Weights* get_weights();
     SparseWeights* compute_grad(const SparseVector& object, double coef);
     void update_weights(const SparseWeights* update, double coef);
-    
+    void update_reg(const SparseVector& object, const SparseWeights* update, double coef);
+
     void init_als(Loss* loss, const X& x, const X& x_csr, const Y& y);
     void als_step(Loss* loss, const X& x, const Y& y);
     
