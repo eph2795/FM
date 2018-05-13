@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <vector>
 
+#include <omp.h>
+
 #include "data.h"
 #include "model.h"
 #include "loss.h"
@@ -49,11 +51,15 @@ void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_
         double start, finish;
         start = clock();
 
-        double train_mse = 0;
-        for (size_t obj_idx: objects_order) {
-            double prediction = model->predict(x_train._objects[obj_idx]);
+        double prediction, coef, train_mse = 0;
+        size_t obj_idx;
+
+     
+        for (size_t i = 0; i < N; i++) {
+            obj_idx = objects_order[i];
+            prediction = model->predict(x_train._objects[obj_idx]);
             train_mse += loss->compute_loss(prediction, y_train._targets[obj_idx]);
-            double coef = loss->compute_grad(prediction, y_train._targets[obj_idx]);
+            coef = loss->compute_grad(prediction, y_train._targets[obj_idx]);
             SparseWeights* model_grad = model->compute_grad(x_train._objects[obj_idx], coef);
             model->update_weights(model_grad, -_learning_rate);
         }
@@ -125,7 +131,7 @@ void ALSOptimizer::train(Model* model, Loss* loss, const X& x_train_csr, const Y
 //     std::uniform_int_distribution<size_t> object_sampler(0, N);
 //     std::uniform_int_distribution<size_t> gradient_sampler(0, _update_frequency);
     
-//     model->train(true);
+//     model->train_sgd(true);
 //     for (size_t epoch = 0; epoch < _num_epochs; epoch++) {
     
 //         double start, finish, train_mse = 0;
@@ -158,5 +164,5 @@ void ALSOptimizer::train(Model* model, Loss* loss, const X& x_train_csr, const Y
 //         }
 //         std::cout << "\telapsed time: " << double(finish - start) / CLOCKS_PER_SEC << "." << std::endl;;
 //     }
-//     model->train(false);
+//     model->train_sgd(false);
 // }
