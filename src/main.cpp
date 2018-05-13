@@ -14,7 +14,8 @@
 
 void parse_arguments(int argc, char** argv, 
         std::string* train_file, std::string* test_file, std::string* model_type, std::string* loss_type, 
-        size_t* factors_size, bool* use_offset, size_t* num_epochs, double* learning_rate, std::string* reg_type, double* C,
+        size_t* factors_size, bool* use_offset, size_t* num_epochs, double* learning_rate,
+        std::string* reg_type, double* C, bool* use_common, double* C0, double* Cv, double* Cw, 
         std::string* index_type, size_t* bits_number, std::string* validation_file, 
         std::string* optimizer_type, std::string* model_file, std::string* predict_file, 
         bool* use_train, bool* use_validation, bool* use_test, bool* dump, bool* load, bool* predict) {
@@ -58,7 +59,17 @@ void parse_arguments(int argc, char** argv,
                 *reg_type = std::string(argv[i]);           
             } else if (strcmp(argv[i], "-C") == 0) {
                 i += 1;
+                *use_common = true;
                 *C = std::stod(argv[i]);
+            } if (strcmp(argv[i], "-C0") == 0) {
+                i += 1;
+                *C0 = std::stod(argv[i]);
+            } if (strcmp(argv[i], "-Cw") == 0) {
+                i += 1;
+                *Cw = std::stod(argv[i]);
+            } if (strcmp(argv[i], "-Cv") == 0) {
+                i += 1;
+                *Cv = std::stod(argv[i]);
             } else if (strcmp(argv[i], "--index_type") == 0) {
                 i += 1;
                 *index_type = std::string(argv[i]);
@@ -85,14 +96,14 @@ void parse_arguments(int argc, char** argv,
 }
 
 
-Regularizer* create_regularizer(const std::string& reg_type, double C) {
+Regularizer* create_regularizer(const std::string& reg_type) {
     Regularizer* regularizer;
     if (strcmp(reg_type.c_str(), "l1") == 0) {
-        std::cout << "Reqularizer: L1, C=" << C << "." <<std::endl;
-        regularizer = new L1(C);
+        std::cout << "Reqularizer: L1." << std::endl;
+        regularizer = new L1();
     } else if (strcmp(reg_type.c_str(), "l2") == 0) {
-        std::cout << "Regularizer: L2, C=" << C << "." <<std::endl;
-        regularizer = new L2(C);
+        std::cout << "Regularizer: L2." << std::endl;
+        regularizer = new L2();
     } else {
         std::cout << "Wrong regularizer name! Terminated." << std::endl;
         throw;
@@ -103,18 +114,22 @@ Regularizer* create_regularizer(const std::string& reg_type, double C) {
 
 
 Model* create_model(const std::string& model_type, size_t features_number, size_t factors_size, bool use_offset,
-                    const std::string& reg_type, double C) {
-    Regularizer* regularizer = create_regularizer(reg_type, C);
+                    const std::string& reg_type, double C0, double Cw, double Cv) {
+    Regularizer* regularizer = create_regularizer(reg_type);
     Model* model;
     if (use_offset) {
-        std::cout << "Using offset w0." << std::endl;
+        std::cout << "With offset w0." << std::endl;
+    } else {
+        std::cout << "Without offset w0." << std::endl;
     }
     if (strcmp(model_type.c_str(), "linear") == 0) {
         std::cout << "Model: linear." << std::endl;
-        model = new LinearModel(features_number, use_offset, regularizer);
+        std::cout << "\tC0=" << C0 << ", Cw=" << Cw << "." << std::endl;
+        model = new LinearModel(features_number, use_offset, C0, Cw, regularizer);
     } else if (strcmp(model_type.c_str(), "fm") == 0) {
         std::cout << "Model: FM, " << " factors size=" << factors_size << "." << std::endl;
-        model = new FMModel(features_number, factors_size, use_offset, regularizer);
+        std::cout << "\tC0=" << C0 << ", Cw=" << Cw << ", Cv=" << Cv << "." << std::endl;
+        model = new FMModel(features_number, factors_size, use_offset, C0, Cw, Cv, regularizer);
     } else {
         std::cout << "Wrong model name! Terminated." << std::endl;
         throw;
@@ -160,12 +175,11 @@ DataReader* create_reader(const std::string& index_type, size_t bits_number) {
 
 Optimizer* create_optimizer(const std::string& optimizer_type, size_t num_epochs, double learning_rate) {
     Optimizer* optimizer;
+    std::cout << "Passes number: " << num_epochs << std::endl;
     if (strcmp(optimizer_type.c_str(), "sgd")  == 0) {
         std::cout << "Optimizer: SGD." << std::endl;
         optimizer = new SGDOptimizer(num_epochs, learning_rate);
-    // } else if (strcmp(optimizer_type.c_str(), "als") == 0) {
-    //     std::cout << "Optimizer: ALS, update frequency=" << update_frequency << "." << std::endl;
-    //     optimizer = new SVRGOptimizer(num_epochs, learning_rate, update_frequency);
+        std::cout << "\tLearning rate: " << learning_rate << std::endl;
     } else if (strcmp(optimizer_type.c_str(), "als") == 0) {
         std::cout << "Optimizer: ALS." << std::endl;
         optimizer = new ALSOptimizer(num_epochs);
@@ -173,6 +187,7 @@ Optimizer* create_optimizer(const std::string& optimizer_type, size_t num_epochs
         std::cout << "Wrong optimizer type! Terminated." << std::endl;
         throw;
     }
+    std::cout << std::endl;
     return optimizer;
 }
 
@@ -190,14 +205,18 @@ int main(int argc, char** argv) {
     size_t bits_number = 10;
     size_t factors_size = 10;
     double learning_rate = 1e-3;
-    double C=1e-3;
+    double C = 1e-3, C0 = 1, Cw = 1e-6, Cv = 1e-3;
     size_t num_epochs = 10;
-    bool use_offset = false;
+    bool use_offset = false, use_common = false;
 
     parse_arguments(argc, argv, &train_file, &test_file, &model_type, &loss_type, &factors_size, &use_offset, 
-        &num_epochs, &learning_rate, &reg_type, &C, &index_type, &bits_number, &validation_file,
+        &num_epochs, &learning_rate, &reg_type, &C, &use_common, &C0, &Cw, &Cv, &index_type, &bits_number, &validation_file,
         &optimizer_type, &model_file, &predict_file, &use_train, &use_validation, &use_test, &dump, &load, &predict);
-
+    if (use_common) {
+        C0 = C;
+        Cw = C;
+        Cv = C;
+    }
     if (use_train and load) {
         std::cout << "Can't retrain loaded model! Terminated." << std::endl;
         throw;
@@ -254,14 +273,11 @@ int main(int argc, char** argv) {
     }
     
     
-    Model* model = create_model(model_type, data_reader->get_features_number(), factors_size, use_offset, reg_type, C);
+    Model* model = create_model(model_type, data_reader->get_features_number(), factors_size, use_offset, reg_type, C0, Cw, Cv);
     Loss* loss = create_loss(loss_type);
     
     if (use_train) {
         Optimizer* optimizer = create_optimizer(optimizer_type, num_epochs, learning_rate);
-        std::cout << "Passes number: " << num_epochs << std::endl;
-        std::cout << "Learning rate: " << learning_rate << std::endl;
-        std::cout << std::endl;
 
         std::cout << "Start to train model..." << std::endl;
         start = clock();

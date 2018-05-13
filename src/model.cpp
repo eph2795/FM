@@ -34,8 +34,9 @@ SparseWeights::~SparseWeights() {}
 Weights::~Weights() {}
 
 
-LinearWeights::LinearWeights(size_t features_number, Regularizer* regularizer)
-        : _features_number(features_number), _w0(0), _w(features_number, 0), _regularizer(regularizer)
+LinearWeights::LinearWeights(size_t features_number, 
+                             double C0, double Cw, Regularizer* regularizer)
+        : _features_number(features_number), _w0(0), _w(features_number, 0), _C0(C0), _Cw(Cw), _regularizer(regularizer)
 {}
 
 
@@ -46,17 +47,18 @@ LinearWeights::~LinearWeights() {
 
 inline void LinearWeights::update_weights(const SparseWeights* update, double coef) {
     const LinearSparseWeights* linear_update = dynamic_cast<const LinearSparseWeights*>(update);
-    _w0 += coef * (linear_update->_w0 + _regularizer->get_update(_w0));
+    _w0 += coef * (linear_update->_w0 + _C0 * _regularizer->get_update(_w0));
     for (std::pair<size_t, double> item: linear_update->_w._items) {
-        _w[item.first] += coef * (item.second + _regularizer->get_update(_w[item.first]));
+        _w[item.first] += coef * (item.second + _Cw *_regularizer->get_update(_w[item.first]));
     }
 }
 
 
-FMWeights::FMWeights(size_t features_number, size_t factors_size, Regularizer* regularizer)
+FMWeights::FMWeights(size_t features_number, size_t factors_size, 
+                     double C0, double Cw, double Cv, Regularizer* regularizer)
         : _features_number(features_number), _factors_size(factors_size), _w0(0)
-        ,_w(features_number, 0), _v(features_number, std::vector<double>(factors_size))
-        ,_regularizer(regularizer)
+        , _w(features_number, 0), _v(features_number, std::vector<double>(factors_size))
+        , _C0(C0), _Cw(Cw), _Cv(Cv), _regularizer(regularizer)
 {
      std::default_random_engine generator;
      std::normal_distribution<double> weights_sampler(0, 0.001);
@@ -75,13 +77,13 @@ FMWeights::~FMWeights() {
 
 inline void FMWeights::update_weights(const SparseWeights* update, double coef) {
     const FMSparseWeights* fm_update = dynamic_cast<const FMSparseWeights*>(update);
-    _w0 += coef * (fm_update->_w0 + _regularizer->get_update(_w0));
+    _w0 += coef * (fm_update->_w0 + _C0 * _regularizer->get_update(_w0));
     for (std::pair<size_t, double> item: fm_update->_w._items) {
-        _w[item.first] += coef * (item.second + _regularizer->get_update(_w[item.first]));
+        _w[item.first] += coef * (item.second + _Cw * _regularizer->get_update(_w[item.first]));
     }
     for (std::pair<size_t, std::vector<double>> factors: fm_update->_v) {
         for (size_t factor_num = 0; factor_num < _factors_size; factor_num++) {
-            _v[factors.first][factor_num] += coef * (factors.second[factor_num] + _regularizer->get_update(_v[factors.first][factor_num]));
+            _v[factors.first][factor_num] += coef * (factors.second[factor_num] + _Cv * _regularizer->get_update(_v[factors.first][factor_num]));
         }
     }
 }
@@ -90,8 +92,9 @@ inline void FMWeights::update_weights(const SparseWeights* update, double coef) 
 Model::~Model() {}
 
 
-LinearModel::LinearModel(size_t features_number, bool use_offset, Regularizer* regularizer)
-        : _state(false), _use_offset(use_offset), _weights(features_number, regularizer), _e(0)
+LinearModel::LinearModel(size_t features_number, bool use_offset, 
+                         double C0, double Cv, Regularizer* regularizer)
+        : _state(false), _use_offset(use_offset), _weights(features_number, C0, Cv, regularizer), _e(0)
 {}
 
 
@@ -114,25 +117,9 @@ inline double LinearModel::predict(const SparseVector& object) {
 
 Y LinearModel::predict(const X& x) {
     Y prediction;
-    if (strcmp(x._data_type.c_str(), "csr") == 0) {
-        prediction._targets.resize(x._objects_number);
-        for (size_t obj_idx = 0; obj_idx < x._objects.size(); obj_idx++) {
-            prediction._targets[obj_idx] = predict(x._objects[obj_idx]);
-        }
-    } else if (strcmp(x._data_type.c_str(), "csc") == 0) {
-        prediction._targets.resize(x._objects_number, _weights._w0);
-        size_t object_idx;
-        double feature_value; 
-        for (size_t feature_idx = 0; feature_idx < x._features_number; feature_idx++) {    
-            for (const auto& item: x._objects[feature_idx]._items) {
-                object_idx = item.first;
-                feature_value = item.second;
-                prediction._targets[object_idx] += _weights._w[feature_idx] * feature_value;
-            }
-        }
-    } else {
-        std::cout << "Wrong sparse matrix type! Terminated." << std::endl;
-        throw;
+    prediction._targets.resize(x._objects_number);
+    for (size_t obj_idx = 0; obj_idx < x._objects.size(); obj_idx++) {
+        prediction._targets[obj_idx] = predict(x._objects[obj_idx]);
     }
     return prediction;
 }
@@ -182,14 +169,14 @@ void LinearModel::als_step(Loss* loss, const X& x, const Y& y) {
     size_t M = x._features_number; // number of features
     size_t N = x._objects_number; // number of objects  
     size_t object_idx;
-    double C = _weights._regularizer->get_C() * N;
+    double C0 = _weights._C0 * N, Cw = _weights._Cw * N;
     double dw, numerator, squares, feature_value, e_sum = 0;
 
     for (size_t object_idx = 0; object_idx < N; object_idx++) {
         e_sum += _e[object_idx];
     }
 
-    dw = -(e_sum - N * _weights._w0) / (N + C) - _weights._w0;
+    dw = -(e_sum - N * _weights._w0) / (N + C0) - _weights._w0;
     for (size_t object_idx = 0; object_idx < N; object_idx++) {
         _e[object_idx] += dw;
     }
@@ -209,7 +196,7 @@ void LinearModel::als_step(Loss* loss, const X& x, const Y& y) {
             numerator += feature_value * (_e[object_idx] - _weights._w[feature_idx] * feature_value);
             squares += std::pow(feature_value, 2);
         }
-        dw = -numerator / (squares + C) - _weights._w[feature_idx];
+        dw = -numerator / (squares + Cw) - _weights._w[feature_idx];
         for (const auto& item: x._objects[feature_idx]._items) {
             object_idx = item.first;
             feature_value = item.second;
@@ -222,7 +209,7 @@ void LinearModel::als_step(Loss* loss, const X& x, const Y& y) {
 
 Model* LinearModel::clone() const {
     Regularizer* regularizer = _weights._regularizer->clone();
-    LinearModel* clone = new LinearModel(_weights._features_number, _use_offset, regularizer);
+    LinearModel* clone = new LinearModel(_weights._features_number, _use_offset, _weights._C0, _weights._Cw, regularizer);
     clone->_weights = _weights;
     return clone;
 }
@@ -237,6 +224,9 @@ void LinearModel::dump(const std::string& file_name) const {
         file.write((char*)&_weights._features_number, sizeof(double));
         file.write((char*)&_weights._w0, sizeof(double));
         file.write((char*)_weights._w.data(), sizeof(double) * _weights._w.size());
+        file.write((char*)&_weights._C0, sizeof(double));
+        file.write((char*)&_weights._Cw, sizeof(double));
+        file.write((char*)_weights._regularizer, sizeof(Regularizer));
         file.close();
     } else {
         std::cout << "Unable to open model file! Terminated." << std::endl;
@@ -254,6 +244,9 @@ void LinearModel::load(const std::string& file_name) const {
         file.read((char*)&_weights._features_number, sizeof(double));
         file.read((char*)&_weights._w0, sizeof(double));
         file.read((char*)_weights._w.data(), sizeof(double) * _weights._features_number);
+        file.read((char*)&_weights._C0, sizeof(double));
+        file.read((char*)&_weights._Cw, sizeof(double));
+        file.read((char*)_weights._regularizer, sizeof(Regularizer));
         file.close();   
     } else {
         std::cout << "Unable to open model file! Terminated." << std::endl;
@@ -262,8 +255,10 @@ void LinearModel::load(const std::string& file_name) const {
 }
 
 
-FMModel::FMModel(size_t features_number, size_t factors_size, bool use_offset, Regularizer* regularizer)
-        : _state(false), _use_offset(use_offset), _weights(features_number, factors_size, regularizer)
+FMModel::FMModel(size_t features_number, size_t factors_size, bool use_offset, 
+                 double C0, double Cw, double Cv, Regularizer* regularizer)
+        : _state(false), _use_offset(use_offset)
+        , _weights(features_number, factors_size, C0, Cw, Cv, regularizer)
         , _precomputed_sp(factors_size), _e(0), _q(0, std::vector<double>(0))
 {}
 
@@ -374,14 +369,14 @@ void FMModel::als_step(Loss* loss, const X& x, const Y& y) {
     size_t M = x._features_number; // number of features
     size_t N = x._objects_number; // number of objects
     size_t object_idx;  
-    double C = _weights._regularizer->get_C() * N;
+    double C0 = _weights._C0 * N, Cw = _weights._Cw * N, Cv = _weights._Cv * N;
     double dw, numerator, squares, h, feature_value, e_sum = 0;
 
     for (size_t object_idx = 0; object_idx < N; object_idx++) {
         e_sum += _e[object_idx];
     }
 
-    dw = -(e_sum - N * _weights._w0) / (N + C) - _weights._w0;
+    dw = -(e_sum - N * _weights._w0) / (N + C0) - _weights._w0;
     for (size_t object_idx = 0; object_idx < N; object_idx++) {
         _e[object_idx] += dw;
     }
@@ -400,7 +395,7 @@ void FMModel::als_step(Loss* loss, const X& x, const Y& y) {
             numerator += feature_value * (_e[object_idx] - _weights._w[feature_idx] * feature_value);
             squares += std::pow(feature_value, 2);
         }
-        dw = -numerator / (squares + C) - _weights._w[feature_idx];
+        dw = -numerator / (squares + Cw) - _weights._w[feature_idx];
         for (const auto& item: x._objects[feature_idx]._items) {
             object_idx = item.first;
             feature_value = item.second;
@@ -424,7 +419,7 @@ void FMModel::als_step(Loss* loss, const X& x, const Y& y) {
                 squares += std::pow(h, 2);
             }
             
-            dw = -numerator / (squares + C) - _weights._v[feature_idx][factor_idx];
+            dw = -numerator / (squares + Cv) - _weights._v[feature_idx][factor_idx];
             for (const auto& item: x._objects[feature_idx]._items) {
                 object_idx = item.first;
                 feature_value = item.second;
@@ -441,7 +436,8 @@ void FMModel::als_step(Loss* loss, const X& x, const Y& y) {
 
 Model* FMModel::clone() const {
     Regularizer* regularizer = _weights._regularizer->clone();
-    FMModel* clone = new FMModel(_weights._features_number, _weights._factors_size, _use_offset, regularizer);
+    FMModel* clone = new FMModel(_weights._features_number, _weights._factors_size, _use_offset, 
+                                _weights._C0, _weights._Cw, _weights._Cv, regularizer);
     clone->_weights = _weights;
     return clone;  
 }
@@ -457,6 +453,10 @@ void FMModel::dump(const std::string& file_name) const {
         file.write((char*)&_weights._factors_size, sizeof(double));
         file.write((char*)&_weights._w0, sizeof(double));
         file.write((char*)_weights._w.data(), sizeof(double) * _weights._w.size());
+        file.write((char*)&_weights._C0, sizeof(double));
+        file.write((char*)&_weights._Cw, sizeof(double));
+        file.write((char*)&_weights._Cv, sizeof(double));
+        file.write((char*)_weights._regularizer, sizeof(Regularizer));
         for (const auto& v: _weights._v) {
             file.write((char*)v.data(), sizeof(double) * v.size());
         }
@@ -478,6 +478,10 @@ void FMModel::load(const std::string& file_name) const {
         file.read((char*)&_weights._factors_size, sizeof(double));
         file.read((char*)&_weights._w0, sizeof(double));
         file.read((char*)_weights._w.data(), sizeof(double) * _weights._features_number);
+        file.read((char*)&_weights._C0, sizeof(double));
+        file.read((char*)&_weights._Cw, sizeof(double));
+        file.read((char*)&_weights._Cv, sizeof(double));
+        file.read((char*)_weights._regularizer, sizeof(Regularizer));
         for (auto& v: _weights._v) {
             file.read((char*)v.data(), sizeof(double) * _weights._factors_size);
         }

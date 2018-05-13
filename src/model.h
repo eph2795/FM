@@ -37,7 +37,7 @@ struct Weights {
 
 
 struct LinearWeights: Weights {
-    LinearWeights(size_t features_number, Regularizer* regularizer);
+    LinearWeights(size_t features_number, double C0, double Cw, Regularizer* regularizer);
     ~LinearWeights();
 
     void update_weights(const SparseWeights* update, double coef); 
@@ -45,12 +45,13 @@ struct LinearWeights: Weights {
     size_t _features_number;
     double _w0;
     std::vector<double> _w;
+    double _C0, _Cw;
     Regularizer* _regularizer;
 };
 
 
 struct FMWeights: Weights {
-    FMWeights(size_t features_number, size_t factors_size, Regularizer* regularizer);
+    FMWeights(size_t features_number, size_t factors_size, double C0, double Cw, double Cv, Regularizer* regularizer);
     ~FMWeights();
 
     void update_weights(const SparseWeights* update, double coef);
@@ -59,6 +60,7 @@ struct FMWeights: Weights {
     double _w0;
     std::vector<double> _w;
     std::vector<std::vector<double>> _v;
+    double _C0, _Cw, _Cv;
     Regularizer* _regularizer;
 };
 
@@ -81,7 +83,7 @@ struct Model {
 
 
 struct LinearModel: Model {
-    LinearModel(size_t features_number, bool use_offset, Regularizer* regularizer);
+    LinearModel(size_t features_number, bool use_offset, double C0, double Cw, Regularizer* regularizer);
     // ~LinearModel();
 
     double predict(const SparseVector& object); 
@@ -108,7 +110,8 @@ struct LinearModel: Model {
 
 
 struct FMModel: Model {
-    FMModel(size_t features_number, size_t factors_size, bool use_offset, Regularizer* regularizer);
+    FMModel(size_t features_number, size_t factors_size, bool use_offset, 
+            double C0, double Cw, double Cv, Regularizer* regularizer);
     // ~FMModel();
     
     double predict(const SparseVector& object); 
