@@ -42,7 +42,7 @@
 
 #### Нюансы и недостатки реализации:
 
-> Используются sparse апдейсты градинтов и sparse регуляризация.
+> Используются sparse апдейты градиeнтов и sparse регуляризация.
 
 > Для ускорения вычисления fm-предиктов используется предподсчет скалярных произведений.
 
@@ -66,8 +66,7 @@ make all
 ./main --train ../../datasets/rcv1/rcv1.vw --validation ../../datasets/rcv1/rcv1.test.vw --test ../../datasets/rcv1/rcv1.test.vw --dump ../../datasets/model.bin --predict ../../datasets/rcv1/pred.txt --model fm --loss mse --factors_size 20 --use_offset --passes 50 --optimizer sgd --learning_rate 0.001 --reg_type l2 -C0 1 -Cw 0.000001 -Cv 0.001 --index_type hash --bits_number 15
 
 
-### Сравнение c vw
-
+### Сравнение c vw - TODO
 Для примерочного сравнения я выбрал датасет rcv1, потому что в нём 700к примеров(достаточно много, чтобы проверка несла какую-то информацию, и достаточно мало, чтобы быстро получать результат), есть категориальные и численные фичи, он доступен в vw формате. 
 
 Обучал и в случае vw, и в случае своей реализации 10 итераций обычного sgd с mse-loss и learning_rate=0.1. 
