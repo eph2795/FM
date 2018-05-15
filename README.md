@@ -67,6 +67,17 @@ make all
 
 
 ### Сравнение c vw - TODO
+
+Обучение FM:
+
+./main --train ../../datasets/avazu/train.vw --validation ../../datasets/avazu/val.vw --test ../../datasets/avazu/test.vw --dump ../../datasets/model.bin --predict ../../datasets/avazu/pred.txt --model linear --loss mse --factors_size 10 --use_offset --passes 1 --optimizer sgd --learning_rate 0.005 --reg_type l2 -C0 1 -Cw 0.000001 -Cv 0.001 --index_type hash --bits_number 15
+
+Обучение vw:
+
+vw -b 15 --passes 1 --sgd --l2 0.001 -d ../../datasets/avazu/train.vw --link logistic --loss_function=logistic -f ../../datasets/avazu/model.vw
+
+vw -d ../../datasets/avazu/test.vw -t -i ../../datasets/model.vw --loss_function=logistic -r ../../datasets/avazu/preds_vw.txt
+
 Для примерочного сравнения я выбрал датасет rcv1, потому что в нём 700к примеров(достаточно много, чтобы проверка несла какую-то информацию, и достаточно мало, чтобы быстро получать результат), есть категориальные и численные фичи, он доступен в vw формате. 
 
 Обучал и в случае vw, и в случае своей реализации 10 итераций обычного sgd с mse-loss и learning_rate=0.1. 
