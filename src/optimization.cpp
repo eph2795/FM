@@ -51,6 +51,9 @@ void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_
     }
     std::uniform_int_distribution<size_t> val_sampler(0, val_size);
 
+    size_t c_iter = 1, c_sample = 1;
+    double average_loss = 0;
+
     model->train_sgd(true);
     for (size_t epoch = 0; epoch < _num_epochs; epoch++) {
         std::random_shuffle(objects_order.begin(), objects_order.end());
@@ -58,14 +61,15 @@ void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_
         double start, finish;
         start = clock();
 
-        double prediction, coef, train_mse = 0;
+        double prediction, coef, obj_loss, train_loss = 0;
         size_t obj_idx;
 
      
         for (size_t i = 0; i < N; i++) {
             obj_idx = objects_order[i];
             prediction = model->predict(x_train._objects[obj_idx]);
-            train_mse += loss->compute_loss(prediction, y_train._targets[obj_idx]);
+            obj_loss = loss->compute_loss(prediction, y_train._targets[obj_idx]);
+            train_loss += obj_loss;
             coef = loss->compute_grad(prediction, y_train._targets[obj_idx]);
             SparseWeights* model_grad = model->compute_grad(x_train._objects[obj_idx], coef);
 
@@ -75,19 +79,28 @@ void SGDOptimizer::train(Model* model, Loss* loss, const X& x_train, const Y& y_
             }
 
             model->update_weights(model_grad, -_learning_rate);
+
+            average_loss += obj_loss / std::pow(2, c_iter);
+            if (std::pow(2, c_iter) == c_sample) {
+                std::cout << "Passed samples: " << c_sample << ", loss: " << average_loss << std::endl;
+                average_loss = 0;
+                c_sample = 0;
+                c_iter += 1;
+            }
+            c_sample += 1;
         }
-        train_mse /= N;
+        train_loss /= N;
         
-        double val_mse;
+        double val_loss;
         if (use_validation) {
             Y val_prediction = model->predict(x_val);
-            val_mse = loss->compute_loss(val_prediction, y_val);
+            val_loss = loss->compute_loss(val_prediction, y_val);
         }
 
         finish = clock();
-        std::cout << "Epoch " << epoch << " finished.\n \tTrain loss: " << train_mse << ",\n";
+        std::cout << "Epoch " << epoch << " finished.\n \tTrain loss: " << train_loss << ",\n";
         if (use_validation) {
-            std::cout << "\tvalidation loss: " << val_mse << ",\n";
+            std::cout << "\tvalidation loss: " << val_loss << ",\n";
         }
         // if (adaptive_reg) {
         //     const LinearModel* linear_model = dynamic_cast<const LinearModel*>(model);
