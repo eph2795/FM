@@ -63,7 +63,7 @@ cd src
 
 make all
 
-./main --train ../../datasets/rcv1/rcv1.vw --validation ../../datasets/rcv1/rcv1.test.vw --test ../../datasets/rcv1/rcv1.test.vw --dump ../../datasets/model.bin --predict ../../datasets/rcv1/pred.txt --model fm --loss mse --factors_size 20 --use_offset --passes 50 --optimizer sgd --learning_rate 0.001 --reg_type l2 -C0 1 -Cw 0.000001 -Cv 0.001 --index_type hash --bits_number 15 --adaptive_reg
+./main --train ../../datasets/rcv1/rcv1.vw --validation ../../datasets/rcv1/rcv1.test.vw --test ../../datasets/rcv1/rcv1.test.vw --dump ../../datasets/model.bin --predict ../../datasets/rcv1/pred.txt --model fm --loss mse --factors_size 10 --use_offset --passes 50 --optimizer sgd --learning_rate 0.001 --reg_type l2 -C0 1 -Cw 0.000001 -Cv 0.001 --index_type hash --bits_number 15 --adaptive_reg
 
 
 ### Сравнение c vw 
@@ -81,7 +81,7 @@ make all
 
 Обучение FM:
 
-./main --train ../../datasets/avazu/train.vw --validation ../../datasets/avazu/val.vw --test ../../datasets/avazu/test.vw --dump ../../datasets/model.bin --predict ../../datasets/avazu/pred.txt --model fm --loss logistic --factors_size 10 --use_offset --passes 5 --optimizer sgd --learning_rate 0.005 --reg_type l2 -C0 1 -Cw 0.000001 -Cv 0.00001 --index_type hash --bits_number 15
+./main --train ../../datasets/avazu/train.vw --validation ../../datasets/avazu/val.vw --test ../../datasets/avazu/test.vw --dump ../../datasets/model.bin --predict ../../datasets/avazu/pred.txt --model fm --loss logistic --factors_size 20 --use_offset --passes 5 --optimizer sgd --learning_rate 0.001 --reg_type l2 -C0 1 -Cw 0.000001 -Cv 0.00001 --index_type hash --bits_number 15
 
 Результат:
 0.399265
@@ -94,3 +94,31 @@ vw -d ../../datasets/avazu/test.vw -t -i ../../datasets/model.vw --loss_function
 
 Результат:
 0.406582
+
+#### Movielens
+
+Исходныцй train был разделен в пропорции 3:1:1 и сформированы train, val и test выборки. Качество измерялось для test. 
+
+Обучение линейной модели:
+
+./main --train ../../datasets/ml-20m/train.vw --validation ../../datasets/ml-20m/val.vw --test ../../datasets/ml-20m/test.vw --dump ../../datasets/model.bin --predict ../../datasets/ml-20m/pred.txt --model linear --loss mse --use_offset --passes 5 --optimizer sgd --learning_rate 0.005 --reg_type l2 -C0 1 -Cw 0.000001 --index_type hash --bits_number 15 --adaptive_reg
+
+Результат:
+0.39977
+
+Обучение FM:
+
+./main --train ../../datasets/ml-20m/train.vw --validation ../../datasets/ml-20m/val.vw --test ../../datasets/ml-20m/test.vw --dump ../../datasets/model.bin --predict ../../datasets/ml-20m/pred.txt --model fm --loss mse --factors_size 10 --use_offset --passes 5 --optimizer sgd --learning_rate 0.001 --reg_type l2 -C0 1 -Cw 0.000001 -Cv 0.00001 --index_type hash --bits_number 15
+
+Результат:
+0.399265
+
+Обучение vw:
+
+vw -b 15 --passes 5 --sgd --l2 0.000001 -d ../../datasets/ml-20m/train.vw --loss_function=mse -f ../../datasets/ml-20m/model.vw --cache_file ../../datasets/ml-20m/cache.vw
+
+vw -d ../../datasets/ml-20mtest.vw -t -i ../../datasets/model.vw --loss_function=mse -r ../../datasets/ml-20m/preds_vw.txt
+
+Результат:
+0.406582
+
