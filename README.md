@@ -66,20 +66,25 @@ make all
 ./main --train ../../datasets/rcv1/rcv1.vw --validation ../../datasets/rcv1/rcv1.test.vw --test ../../datasets/rcv1/rcv1.test.vw --dump ../../datasets/model.bin --predict ../../datasets/rcv1/pred.txt --model fm --loss mse --factors_size 20 --use_offset --passes 50 --optimizer sgd --learning_rate 0.001 --reg_type l2 -C0 1 -Cw 0.000001 -Cv 0.001 --index_type hash --bits_number 15 --adaptive_reg
 
 
-### Сравнение c vw - TODO
+### Сравнение c vw 
+
+#### Avazu
+
+Исходныцй train был разделен в пропорции 3:1:1 и сформированы train, val и test выборки. Качество измерялось для test. 
 
 Обучение линейной модели:
 
 ./main --train ../../datasets/avazu/train.vw --validation ../../datasets/avazu/val.vw --test ../../datasets/avazu/test.vw --dump ../../datasets/model.bin --predict ../../datasets/avazu/pred.txt --model linear --loss logistic --use_offset --passes 5 --optimizer sgd --learning_rate 0.005 --reg_type l2 -C0 1 -Cw 0.000001 --index_type hash --bits_number 15 --adaptive_reg
 
 Результат:
+0.39977
 
 Обучение FM:
 
 ./main --train ../../datasets/avazu/train.vw --validation ../../datasets/avazu/val.vw --test ../../datasets/avazu/test.vw --dump ../../datasets/model.bin --predict ../../datasets/avazu/pred.txt --model fm --loss logistic --factors_size 10 --use_offset --passes 5 --optimizer sgd --learning_rate 0.005 --reg_type l2 -C0 1 -Cw 0.000001 -Cv 0.001 --index_type hash --bits_number 15
 
-Результат
-
+Результат:
+0.399504
 
 Обучение vw:
 
@@ -89,16 +94,3 @@ vw -d ../../datasets/avazu/test.vw -t -i ../../datasets/model.vw --loss_function
 
 Результат:
 0.406582
-
-
-Для примерочного сравнения я выбрал датасет rcv1, потому что в нём 700к примеров(достаточно много, чтобы проверка несла какую-то информацию, и достаточно мало, чтобы быстро получать результат), есть категориальные и численные фичи, он доступен в vw формате. 
-
-Обучал и в случае vw, и в случае своей реализации 10 итераций обычного sgd с mse-loss и learning_rate=0.1. 
-
-Для vw получилось ~0.042 на train и ~0.044 на test.
-Для моей линейной регрессии ~0.054 на train и ~0.063 на test.
-Для моей FM ~0.051 и ~0.136 на test.
-
-Сейчас линейная модель(без учета чтения данных) тратит на 10 итераций SGD порядка 10сек, а FM c 5 факторами - 180сек, что много, требуется оптимизация кода.
-
-Понятно, что FM даёт прирост качества на train, но переобучается, поэтому проводить более подробный анализ без регуляризации смысла нет. Так же для FM требуется некоторая инициализация весов(с нулевыми не обучается, с неправильными константами расходится) и достаточно маленький lr(я брал 0.01, c 0.1 расходится). Это решается адаптивными методами и более аккуратной инициализацией весов.
