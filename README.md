@@ -81,10 +81,10 @@ make all
 
 Обучение FM:
 
-./main --train ../../datasets/avazu/train.vw --validation ../../datasets/avazu/val.vw --test ../../datasets/avazu/test.vw --dump ../../datasets/model.bin --predict ../../datasets/avazu/pred.txt --model fm --loss logistic --factors_size 10 --use_offset --passes 5 --optimizer sgd --learning_rate 0.005 --reg_type l2 -C0 1 -Cw 0.000001 -Cv 0.001 --index_type hash --bits_number 15
+./main --train ../../datasets/avazu/train.vw --validation ../../datasets/avazu/val.vw --test ../../datasets/avazu/test.vw --dump ../../datasets/model.bin --predict ../../datasets/avazu/pred.txt --model fm --loss logistic --factors_size 10 --use_offset --passes 5 --optimizer sgd --learning_rate 0.005 --reg_type l2 -C0 1 -Cw 0.000001 -Cv 0.00001 --index_type hash --bits_number 15
 
 Результат:
-0.399504
+0.399265
 
 Обучение vw:
 
